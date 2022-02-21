@@ -15,6 +15,7 @@ SDL_Window *window;
 SDL_Renderer *renderer;
 TTF_Font *font;
 bool running = true;
+double cursort = 0;
 
 const char *filename = "tests/main.c";
 struct buffer buffer;
@@ -229,13 +230,15 @@ bool ctrl = 0;
 
 void loop() {
 
-
     while (running) {
+        cursort += 0.016;
+        double prevt = cursort;
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_TEXTINPUT: {
                     buffer_write(&buffer, event.text.text);
+                    cursort = 0;
                 } break;
                 case SDL_MOUSEWHEEL:
                     if (event.wheel.y > 0)
@@ -250,22 +253,25 @@ void loop() {
                         write_whole_file(filename, file);
                         free(file);
                     }
+                    cursort = 0;
                     if (event.key.keysym.scancode == SDL_SCANCODE_BACKSPACE) 
                         buffer_erase_character(&buffer);
-                    if (event.key.keysym.scancode == SDL_SCANCODE_UP)
+                    else if (event.key.keysym.scancode == SDL_SCANCODE_UP)
                         buffer_move(&buffer, 0, -1);
-                    if (event.key.keysym.scancode == SDL_SCANCODE_DOWN)
+                    else if (event.key.keysym.scancode == SDL_SCANCODE_DOWN)
                         buffer_move(&buffer, 0, 1);
-                    if (event.key.keysym.scancode == SDL_SCANCODE_LEFT)
+                    else if (event.key.keysym.scancode == SDL_SCANCODE_LEFT)
                         buffer_move(&buffer, -1, 0);
-                    if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT)
+                    else if (event.key.keysym.scancode == SDL_SCANCODE_RIGHT)
                         buffer_move(&buffer, 1, 0);
-                    if (event.key.keysym.scancode == SDL_SCANCODE_RETURN)
+                    else if (event.key.keysym.scancode == SDL_SCANCODE_RETURN)
                         buffer_write(&buffer, "\n");
-                    if (event.key.keysym.scancode == SDL_SCANCODE_TAB)
+                    else if (event.key.keysym.scancode == SDL_SCANCODE_TAB)
                         buffer_write(&buffer, "    ");
-                    if (event.key.keysym.scancode == SDL_SCANCODE_LCTRL)
+                    else if (event.key.keysym.scancode == SDL_SCANCODE_LCTRL)
                         ctrl = 1;
+                    else
+                        cursort = prevt;                    
                     break;
                 case SDL_KEYUP:
                     if (event.key.keysym.scancode == SDL_SCANCODE_LCTRL)
@@ -307,10 +313,11 @@ void loop() {
         char *l;
         TTF_SizeUTF8(font, l = buffer_get_trimmed_line_at(&buffer, buffer.cursor.column), &w, &h);
         free(l);
-        SDL_SetRenderDrawColor(renderer, 220, 150, 0, 255);
-        SDL_RenderFillRect(renderer, &(SDL_Rect){ w+50, 10+sh/2-15, 2, h });
+        
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
+        SDL_SetRenderDrawColor(renderer, 220, 150, 0, 255.0*(cos(cursort*8)/2+0.5));
+        SDL_RenderFillRect(renderer, &(SDL_Rect){ w+50, 10+sh/2-15, 2, h });
+        
         SDL_SetRenderDrawColor(renderer, 250, 220, 200, 10);
         /*
         SDL_RenderFillRect(renderer, &(SDL_Rect){40, 0, 1, sh - 30});*/
@@ -345,7 +352,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "could not create window: %s\n", SDL_GetError());
         return 1;
     }
-    renderer = SDL_CreateRenderer(window, 0, 0); 
+    renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_PRESENTVSYNC); 
     if (renderer == NULL) {
         fprintf(stderr, "couldn't create renderer: %s\n", SDL_GetError());
         return 1;
@@ -379,8 +386,5 @@ int main(int argc, char *argv[]) {
     SDL_Quit();
     return 0;
 }
-
-
-
 
 

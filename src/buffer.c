@@ -103,7 +103,7 @@ void buffer_move(struct buffer *buffer, int hor, int ver)
 
     if (hor == 0)
         buffer->cursor.column = buffer->cursor.remcol;
-    else 
+    else
         buffer->cursor.remcol = buffer->cursor.column += hor;
 
     buffer->cursor.line += ver;
@@ -161,5 +161,6 @@ void buffer_deinit(struct buffer *buffer)
     for (int i = 0; i < buffer->line_count; i += 1)
         free(buffer->lines[i].data);
 }
+
 
 
