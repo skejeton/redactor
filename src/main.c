@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_blendmode.h>
+#include <SDL2/SDL_events.h>
 #include <SDL2/SDL_hints.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_scancode.h>
@@ -17,6 +18,29 @@ bool running = true;
 
 const char *filename = "tests/main.c";
 struct buffer buffer;
+
+struct glyph {
+    SDL_Texture *tex;
+    SDL_Surface *surf;
+    int h, w;
+} glyphs[256];
+
+void init_glyphs()
+{
+    for (int i = 0; i < 256; i += 1) {
+        SDL_Surface *text_surface = TTF_RenderGlyph32_Blended(font, i, (SDL_Color) { 255, 255, 255, 255 });
+        int h, w;
+        if (text_surface != NULL) {
+            h = text_surface->h;
+            w = text_surface->w;
+            SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+            glyphs[i] = (struct glyph) {
+                .h = h, .w = w,
+                .tex = texture, .surf = text_surface
+            };
+        }
+    }
+}
 
 static char* read_whole_file(const char* path)
 {
@@ -43,22 +67,163 @@ static void write_whole_file(const char* path, const char *contents)
     fclose(f);
 }
 
-int write_text(int x, int y, const char *text)
+SDL_Point write_text(int x, int y, const char *text)
 {
     unsigned char r, g, b, a;
     SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
-    if (!*text) text = " ";
-    SDL_Surface *text_surface = TTF_RenderUTF8_Blended(font, text, (SDL_Color) { r, g, b, a });
-    int h = 0;
-    if (text_surface != NULL) {
-        h = text_surface->h;
-        SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, text_surface);
-        SDL_RenderCopy(renderer, texture, NULL, &(SDL_Rect){ x, y, text_surface->w, text_surface->h});
-        SDL_FreeSurface(text_surface);
-        SDL_DestroyTexture(texture);
+    int rw = 0;
+    if (!*text) { rw = 1; text = " "; };
+    int w = 0, h = 0;
+    for (;*text;text++) {
+        SDL_SetTextureColorMod(glyphs[*text].tex, r, g, b);
+        SDL_SetTextureAlphaMod(glyphs[*text].tex, a);
+        h = h > glyphs[*text].h ? h : glyphs[*text].h;
+        SDL_RenderCopy(renderer, glyphs[*text].tex, NULL, &(SDL_Rect){ x+w, y, glyphs[*text].w, glyphs[*text].h });
+        if (!rw)
+            w += glyphs[*text].w;
+
     }
+    return (SDL_Point){w, h};
+}
+
+bool getnum(const char *text, const char ** end)
+{
+    const char *txt = text;
+    while (*txt && isdigit(*txt))
+        txt++;
+    if (text != txt)
+        *end = txt;
+    return text != txt;
+}
+
+bool getstr(const char *text, const char **end)
+{
+    if (*text++ == '"') {
+        while (*text && *text++ != '"') 
+            ;
+        *end = text;
+        return 1;
+    }
+    return 0;
+}
+
+bool getident(const char *text, const char **end)
+{
+    const char *txt = text;
+    if (*txt && !(isalpha(*txt) || *txt == '_'))
+        return false;
+    while (*txt && (isalnum(*txt) || *txt == '_'))
+        txt++;
+    if (text != txt)
+        *end = txt;
+    return text != txt;
+
+}
+
+bool getspc(const char *text, const char **end) {
+    const char *keytab[] = {
+        "NULL", "EOF", "FILE",
+    };
+
+    for (int i = 0; i < sizeof(keytab)/sizeof(keytab[0]); i++) {
+        int l = strlen(keytab[i]);
+        if (strncmp(text, keytab[i], l) == 0 && !(isalnum(text[l]) || text[l] == '_')) {
+            *end = text+l;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+
+bool getkw(const char *text, const char **end) {
+    const char *keytab[] = {
+        "auto", "bool", "break", "case", "char",
+        "const","continue","default","do",
+        "double","else","enum","extern",
+        "float","for","goto","if",
+        "int","long","register","return",
+        "short","signed","sizeof","static",
+        "struct","switch","thread_local","typedef","union",
+        "unsigned","void","volatile","while"
+    };
+
+    for (int i = 0; i < sizeof(keytab)/sizeof(keytab[0]); i++) {
+        int l = strlen(keytab[i]);
+        if (strncmp(text, keytab[i], l) == 0 && !(isalnum(text[l]) || text[l] == '_')) {
+            *end = text+l;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+bool getchr(const char *text, const char **end)
+{
+    if (*text++ == '\'') {
+        while (*text && *text++ != '\'') 
+            ;
+        *end = text;
+        return 1;
+    }
+    return 0;
+}
+
+bool until_next_line(const char *text, const char **end)
+{
+    while (*text && *text++ != '\n')
+        ;
+    *end = text;
+    return 1;
+}
+
+int write_line(int x, int y, const char *text) {
+    const char *end = text;
+    int h = 0, w = 0;
+    for (;*text&&*end;text++) {
+        const char *prevend = end;
+        SDL_Color color;
+        if (getnum(text, &end)) 
+            color = (SDL_Color) {201, 134, 0, 255};
+        else if (getkw(text, &end)) 
+            color = (SDL_Color) {196, 97, 51, 255};
+        else if (getspc(text, &end)) 
+            color = (SDL_Color) {201, 85, 112, 255};
+        else if (getident(text, &end)) 
+            color = (SDL_Color) {250, 220, 200, 255};
+        else if (getstr(text, &end)) 
+            color = (SDL_Color) {95, 135, 35, 255};
+        else if (getchr(text, &end)) 
+            color = (SDL_Color) {95, 135, 35, 255};
+        else if (strncmp(text, "//", 2) == 0 && until_next_line(text, &end))
+            color = (SDL_Color) {82, 76, 60, 255};
+        else if (strncmp(text, "#", 1) == 0 && until_next_line(text, &end))
+            color = (SDL_Color) {196, 97, 51, 255};
+        else
+            continue;
+        char tail[1024];
+
+        SDL_SetRenderDrawColor(renderer, 250, 220, 200, 255);
+        snprintf(tail, 1024, "%.*s", (int)(text-prevend), prevend);
+        w += write_text(x+w, y, tail).x;
+
+        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+        snprintf(tail, 1024, "%.*s", (int)(text-prevend), prevend);
+        snprintf(tail, 1024, "%.*s", (int)(end-text), text);
+        w += write_text(x+w, y, tail).x;
+ 
+
+        text = end;
+
+    }
+    SDL_SetRenderDrawColor(renderer, 250, 220, 200, 255);
+    h = write_text(x+w, y, end).y;
     return h;
 }
+
 bool ctrl = 0;
 
 
@@ -72,6 +237,12 @@ void loop() {
                 case SDL_TEXTINPUT: {
                     buffer_write(&buffer, event.text.text);
                 } break;
+                case SDL_MOUSEWHEEL:
+                    if (event.wheel.y > 0)
+                        buffer_move(&buffer, 0, -1);
+                    if (event.wheel.y < 0)
+                        buffer_move(&buffer, 0, 1);
+                    break;
                 case SDL_KEYDOWN:
                     if (ctrl && event.key.keysym.scancode == SDL_SCANCODE_S) {
                         buffer.dirty = 0;
@@ -115,8 +286,9 @@ void loop() {
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, 0, 40, sh - 30});
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, sh - 30, 2000, 30});
 */
+        SDL_RenderSetClipRect(renderer, &(SDL_Rect){0, 0, sw, sh-30}); 
         int h = 0;
-        int glyphh = write_text(0, 0, "");
+        int glyphh = write_text(0, 0, "").y;
         for (int i = 0; i < buffer.line_count; ++i) {
             char lineno[16];
             SDL_SetRenderDrawColor(renderer, 250, 220, 200, 32);
@@ -124,13 +296,13 @@ void loop() {
                 SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
             }
             snprintf(lineno, 16, "%2d", i+1);
-            h += write_text(10, 10+h-buffer.cursor.line*glyphh+sh/2-15, lineno);
+            h += write_text(10, 10+h-buffer.cursor.line*glyphh+sh/2-15, lineno).y;
         }
-        SDL_SetRenderDrawColor(renderer, 250, 220, 200, 255);
         h = 0;
         for (int i = 0; i < buffer.line_count; ++i) {
-             h += write_text(50, 10+h-buffer.cursor.line*glyphh+sh/2-15, buffer.lines[i].data);
+             h += write_line(50, 10+h-buffer.cursor.line*glyphh+sh/2-15, buffer.lines[i].data);
         }
+        SDL_RenderSetClipRect(renderer, NULL); 
         int w;
         char *l;
         TTF_SizeUTF8(font, l = buffer_get_trimmed_line_at(&buffer, buffer.cursor.column), &w, &h);
@@ -140,7 +312,8 @@ void loop() {
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
         SDL_SetRenderDrawColor(renderer, 250, 220, 200, 10);
-        SDL_RenderFillRect(renderer, &(SDL_Rect){40, 0, 1, sh - 30});
+        /*
+        SDL_RenderFillRect(renderer, &(SDL_Rect){40, 0, 1, sh - 30});*/
         SDL_RenderFillRect(renderer, &(SDL_Rect){0, sh - 30, 2000, 1});
         SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
         char txt[1024];
@@ -186,10 +359,12 @@ int main(int argc, char *argv[]) {
     }
 
     char *file = read_whole_file(filename);
+    init_glyphs();
     buffer = buffer_init();
     buffer_write(&buffer, file);
     buffer.cursor.column = 0;
     buffer.cursor.line = 0;
+    buffer.dirty = 0;
     buffer_move(&buffer, 0, 0);
     free(file);
     loop();
@@ -204,4 +379,8 @@ int main(int argc, char *argv[]) {
     SDL_Quit();
     return 0;
 }
+
+
+
+
 

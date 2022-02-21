@@ -161,3 +161,5 @@ void buffer_deinit(struct buffer *buffer)
     for (int i = 0; i < buffer->line_count; i += 1)
         free(buffer->lines[i].data);
 }
+
+
