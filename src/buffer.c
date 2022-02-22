@@ -90,13 +90,13 @@ void buffer_move(struct buffer *buffer, int hor, int ver)
     if (buffer->cursor.column == 0 && hor < 0 && buffer->cursor.line > 0) {
         buffer_move(buffer, 0, -1);
         struct buffer_line current_line = buffer->lines[buffer->cursor.line];
-        buffer->cursor.column = current_line.size;
+        buffer->cursor.column = buffer->cursor.remcol = current_line.size;
         buffer_move(buffer, hor+1, 0);
         return;
     }
     if (buffer->cursor.column == current_line.size && hor > 0 && buffer->cursor.line < buffer->line_count-1) {
         buffer_move(buffer, 0, 1);
-        buffer->cursor.column = 0;
+        buffer->cursor.column = buffer->cursor.remcol = 0;
         buffer_move(buffer, hor-1, 0);
         return;
     }
@@ -161,6 +161,3 @@ void buffer_deinit(struct buffer *buffer)
     for (int i = 0; i < buffer->line_count; i += 1)
         free(buffer->lines[i].data);
 }
-
-
-

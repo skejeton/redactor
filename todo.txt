@@ -1,0 +1,22 @@
+Add control movements, that will stride by a word
+Erase tabulations immediately not every space one by one
+Fix cursor staying in the wrong "remember" position after write (or don't?)
+Put indentations after a brace
+Highlight include path as a string
+Highlight define value as general syntax?
+Make a command line that darkens the code content and lets you open files, etc
+Display whether the file was created or opened
+Watch for file changes
+Allow for non ascii characters (at least basic like Cyrillic, Spanish, e.t.c)
+When you click on the code area, move cursor to the symbol it's pointing to
+Handle escape sequences in a string (highlighting)
+Do syntax highlighting based on the file type
+Highlight brace pairs
+Show errors for unclosed braces !!AND IGNORE ONES IN STRINGS/CHARS/COMMENTS!!
+Smooth cursor movement
+Implement proper scrolling where cursor isn't locked to the center
+Smooth scrolling
+Make Shift+Enter insert a new line before the one you're on
+Fix high cpu usage <-- Implement font atlas
+Scrolling horizontally
+Make shift+tab append a tab at the beginning
