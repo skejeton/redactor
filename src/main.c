@@ -1,10 +1,4 @@
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_blendmode.h>
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_hints.h>
-#include <SDL2/SDL_render.h>
-#include <SDL2/SDL_scancode.h>
-#include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -52,7 +46,9 @@ static void write_whole_file(const char* path, const char *contents)
 
 
 void loop() {
-
+    int sw, sh;
+    SDL_GetWindowSize(window, &sw, &sh);
+    
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -63,11 +59,11 @@ void loop() {
                     }
                 } break;
                 case SDL_MOUSEWHEEL:
-                    if (event.wheel.y > 0)
-                        buffer_move(&document.buffer, 0, -1);
-                    if (event.wheel.y < 0)
-                        buffer_move(&document.buffer, 0, 1);
+                    document.scroll.y -= event.wheel.y*30;
                     break;
+                case SDL_MOUSEBUTTONDOWN:
+                    if (event.button.button == SDL_BUTTON_LEFT)
+                        docview_tap((SDL_Rect) {10, 10, sw, sh-40}, (SDL_Point) {event.button.x, event.button.y}, &document);
                 case SDL_WINDOWEVENT:
                 switch (event.window.event) {
                     case SDL_WINDOWEVENT_FOCUS_GAINED:
@@ -127,8 +123,7 @@ void loop() {
 
         SDL_SetRenderDrawColor(renderer, 32, 26, 23, 255);
         SDL_RenderClear(renderer);
-        int sw, sh;
-        SDL_GetWindowSize(window, &sw, &sh);
+
         
         docview_draw((SDL_Rect) {10, 10, sw, sh-40}, renderer, &document);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 16);
@@ -154,7 +149,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "could not initialize sdl ttf: %s\n", TTF_GetError());
         return 1;
     }
-
+    
     window = SDL_CreateWindow(
         "redactor",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,

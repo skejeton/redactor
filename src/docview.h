@@ -10,7 +10,9 @@ struct docview {
     // Tracking the change in position of a cursor to reset the blink
     struct buffer_cursor prev_cursor_pos;
     SDL_Point scroll;
+    SDL_Point scroll_damped;
 };
 
 void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view);
+void docview_tap(SDL_Rect viewport, SDL_Point xy, struct docview *view);
 #endif

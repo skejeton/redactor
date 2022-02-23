@@ -12,7 +12,7 @@ struct font {
 struct font* font_init(const char *path, int size, SDL_Renderer *renderer)
 {
     TTF_Font *font = TTF_OpenFont(path, size);
-    TTF_SetFontHinting(font, TTF_HINTING_LIGHT_SUBPIXEL);
+    TTF_SetFontHinting(font, TTF_HINTING_NORMAL);
     if (font == NULL)
         return NULL;
 
