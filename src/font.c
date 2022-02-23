@@ -65,7 +65,7 @@ SDL_Point font_measure_text(const char *text, struct font *font)
 }
 
 
-SDL_Point font_write_text(const char *text, SDL_Point xy, struct font *font, SDL_Renderer *renderer)
+SDL_Point font_write_text(const char *text, SDL_Point xy, SDL_Renderer *renderer, struct font *font)
 {
     struct font_glyph *glyphs = font->glyphs; 
     unsigned char r, g, b, a;

@@ -1,3 +1,5 @@
+#ifndef REDACTOR_BUFFER_H
+#define REDACTOR_BUFFER_H
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -28,5 +30,4 @@ void buffer_erase_character(struct buffer *buffer);
 void buffer_move(struct buffer *buffer, int hor, int ver);
 char *buffer_get_whole_file(struct buffer *buffer);
 void buffer_deinit(struct buffer *buffer);
-
-
+#endif

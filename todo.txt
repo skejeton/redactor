@@ -20,3 +20,6 @@ Make Shift+Enter insert a new line before the one you're on
 Fix high cpu usage <-- Implement font atlas
 Scrolling horizontally
 Make shift+tab append a tab at the beginning
+Rewrite buffer.h to accepts cursor positions and manage the cursor as an extra API instead of primary
+Allow to change font sizes
+Extracting position/size SDL_Point from SDL_Rect
