@@ -1,5 +1,9 @@
+FILES = ./src/buffer.c ./src/main.c ./src/font.c
+LDFLAGS = -lSDL2 -lSDL2_ttf -lm
+OPTFLAGS = -g
+
 all:
-	cc ./src/buffer.c ./src/main.c -lSDL2 -lSDL2_ttf -lm -O3
+	cc $(FILES) $(LDFLAGS) $(OPTFLAGS)
 
 run: all
 	./a.out

@@ -73,7 +73,6 @@ char *buffer_get_trimmed_line_at(struct buffer *buffer, int index)
     if (index < 0) index = 0;
     struct buffer_line current_line = buffer->lines[buffer->cursor.line];
 
-    // TODO: cache line size by having a line struct
     if (index > current_line.size) 
         index = current_line.size;
 
