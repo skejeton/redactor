@@ -47,15 +47,15 @@ static void write_whole_file(const char* path, const char *contents)
 
 void loop() {
     int sw, sh;
-    SDL_GetWindowSize(window, &sw, &sh);
-    
+
     while (running) {
+        SDL_GetWindowSize(window, &sw, &sh);
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_TEXTINPUT: {
                     if (!ctrl) {
-                        buffer_write(&document.buffer, event.text.text);
+                        docedit_insert(&document.doc, event.text.text);
                     }
                 } break;
                 case SDL_MOUSEWHEEL:
@@ -77,33 +77,41 @@ void loop() {
                     switch (event.key.keysym.scancode) {
                     case SDL_SCANCODE_S:
                         if (ctrl) {
-                            document.buffer.dirty = 0;
-                            char *file = buffer_get_whole_file(&document.buffer);
+                            document.doc.buffer.dirty = 0;
+                            // FIXME: make a proper buffer bound function
+                            char *file = buffer_get_range(&document.doc.buffer, (struct buffer_range) {{100000, 100000}});
                             write_whole_file(filename, file);
                             free(file);
                         }
                         break;
+                    case SDL_SCANCODE_V:
+                        if (ctrl) {
+                            char *s = SDL_GetClipboardText();
+                            docedit_insert(&document.doc, s);
+                            free(s);
+                        }
+                        break;
                     case SDL_SCANCODE_BACKSPACE:
-                        buffer_erase_character(&document.buffer);
+                        docedit_erase(&document.doc);
                         break;
                     case SDL_SCANCODE_UP:
-                        buffer_move(&document.buffer, 0, -1);
+                        docedit_move_cursor(&document.doc, 0, 0, -1);
                         break;
                     case SDL_SCANCODE_DOWN:
-                        buffer_move(&document.buffer, 0, 1);
+                        docedit_move_cursor(&document.doc, 0, 0, 1);
                         break;
                     case SDL_SCANCODE_LEFT:
-                        buffer_move(&document.buffer, -1, 0);
+                        docedit_move_cursor(&document.doc, 0, -1, 0);
                         break;
                     case SDL_SCANCODE_RIGHT:
-                        buffer_move(&document.buffer, 1, 0);
+                        docedit_move_cursor(&document.doc, 0, 1, 0);
                         break;
                     case SDL_SCANCODE_RETURN:
-                        buffer_write(&document.buffer, "\n");
+                        docedit_insert(&document.doc, "\n");
                         break;
                     case SDL_SCANCODE_TAB:
-                        for (int i = 0, col = document.buffer.cursor.column; i < (4 - col % 4); i++)
-                            buffer_write(&document.buffer, " ");
+                        for (int i = 0, col = document.doc.cursor.selection.from.column; i < (4 - col % 4); i++)
+                            docedit_insert(&document.doc, " ");
                         break;
                     case SDL_SCANCODE_LCTRL:
                     case SDL_SCANCODE_RCTRL:
@@ -131,8 +139,8 @@ void loop() {
         SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
         char txt[1024];
         snprintf(txt, 1024, "%s %s%s%d:%d fs: %d", 
-            filename, is_file_new ? "(new) " : "", document.buffer.dirty ? "* " : "",
-            document.buffer.cursor.line+1, document.buffer.cursor.column+1, 17 /*font_size*/);
+            filename, is_file_new ? "(new) " : "", document.doc.buffer.dirty ? "* " : "",
+            document.doc.cursor.selection.from.line+1, document.doc.cursor.selection.from.column+1, 17 /*font_size*/);
         font_write_text(txt, (SDL_Point){0+5, sh-30+5}, renderer, font);
         SDL_RenderPresent(renderer);
     }
@@ -170,7 +178,7 @@ int main(int argc, char *argv[]) {
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     font = document.font = font_init(font_path, 17 /*font_size*/, renderer);
 
-    document.buffer = buffer_init();
+    document.doc.buffer = buffer_init();
     char *file = read_whole_file(filename);
     is_file_new = file == NULL;
     if (file != NULL) {
@@ -178,21 +186,17 @@ int main(int argc, char *argv[]) {
         if (*file && file[strlen(file)-1] == '\n')
             file[strlen(file)-1] = 0;
 
-        buffer_write(&document.buffer, file);
+        buffer_insert(&document.doc.buffer, (struct buffer_marker){0, 0}, file);
     }
 
-
-    document.buffer.cursor.column = 0;
-    document.buffer.cursor.line = 0;
-    document.buffer.dirty = 0;
-    buffer_move(&document.buffer, 0, 0);
+    document.doc.buffer.dirty = 0;
     free(file);
     
     loop();
 
     // TODO: Handle this in docview instead
-    buffer_deinit(&document.buffer);
-    document.buffer = (struct buffer) { 0 };
+    buffer_deinit(&document.doc.buffer);
+    document.doc.buffer = (struct buffer) { 0 };
 
     font_deinit(font);
     SDL_DestroyRenderer(renderer);

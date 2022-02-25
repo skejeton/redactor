@@ -16,6 +16,7 @@ static void add_line(struct buffer *buffer)
     buffer->line_count += 1;
 }
 
+
 static void insert_line(struct buffer *buffer, int at)
 {
     add_line(buffer);
@@ -24,11 +25,14 @@ static void insert_line(struct buffer *buffer, int at)
     buffer->lines[at].size = 0;
 }
 
+
 static void remove_line(struct buffer *buffer, int at)
 {
+    free(buffer->lines[at].data);
     memmove(buffer->lines+at, buffer->lines+at+1, sizeof(struct buffer_line)*(buffer->line_count-at-1));
     buffer->line_count -= 1;
 }
+
 
 static void line_put_at(struct buffer_line *line, int at, int c)
 {
@@ -39,11 +43,133 @@ static void line_put_at(struct buffer_line *line, int at, int c)
     line->data[++line->size] = 0;
 }
 
+
 static void line_write_at(struct buffer_line *line, int at, const char *s) 
 {
     while (*s)
         line_put_at(line, at++, *s++);
 }
+
+
+static struct buffer_marker sanitize_marker(struct buffer *buffer, struct buffer_marker marker)
+{
+    if (marker.line < 0)
+        marker.line = 0;
+    else if (marker.line >= buffer->line_count)
+        marker.line = buffer->line_count-1;
+    if (marker.column < 0)
+        marker.column = 0;
+    else if (marker.column > buffer->lines[marker.line].size)
+        marker.column = buffer->lines[marker.line].size;
+    return marker;
+}
+
+
+static struct buffer_range sanitize_range(struct buffer *buffer, struct buffer_range range)
+{
+    range.from = sanitize_marker(buffer, range.from);
+    range.to = sanitize_marker(buffer, range.to);
+    struct buffer_marker tmp;
+    
+    // Swap ranges so the from range is always before the to range
+    if ((range.from.line > range.to.line) || 
+        ((range.from.line == range.to.line) && (range.from.column > range.to.column))) {
+        tmp = range.from;
+        range.from = range.to;
+        range.to = tmp;
+    }
+    return range;
+}
+
+static void erase_from_line(struct buffer_line *line, int from, int to)
+{
+    memmove(line->data+from, line->data+to, line->size-to);
+    line->size -= to-from;
+    line->data[line->size] = 0;
+}
+
+struct buffer_marker buffer_remove(struct buffer *buffer, struct buffer_range range)
+{
+    buffer->dirty = true;
+    range = sanitize_range(buffer, range);
+    if (range.from.line == range.to.line) {
+        erase_from_line(&buffer->lines[range.from.line], range.from.column, range.to.column);
+    } else {
+        buffer->lines[range.from.line].data[range.from.column] = 0;
+        line_write_at(&buffer->lines[range.from.line], range.from.column, buffer->lines[range.to.line].data+range.to.column);
+
+        for (int i = range.from.line+1; i <= range.to.line; ++i) {
+            remove_line(buffer, range.from.line+1);
+        } 
+    }
+    return range.from;
+}
+
+// FIXME: SLOW!
+struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker marker, const char *text)
+{
+    buffer->dirty = true;
+    marker = sanitize_marker(buffer, marker);
+    
+    while (*text) {
+        char c = *text++;
+        if (c == '\n') {
+            int pl = marker.line;
+            char *tail = buffer->lines[marker.line].data+marker.column;
+            insert_line(buffer, ++marker.line);
+            line_write_at(&buffer->lines[marker.line], 0, tail);
+            buffer->lines[pl].data[marker.column] = 0;
+            buffer->lines[pl].size = marker.column;
+            marker.column = 0;
+        }
+        else {
+            line_put_at(&buffer->lines[marker.line], marker.column++, c);
+        }
+    }
+    
+    return marker;
+}
+
+static int range_length(struct buffer *buffer, struct buffer_range range)
+{
+    if (range.from.line == range.to.line) {
+        return range.to.column - range.from.column;
+    }
+    else {
+        int length = buffer->lines[range.from.line].size-range.from.column+range.to.column;
+        for (int i = range.from.line+1; i < range.to.line; i++) {
+            length += buffer->lines[i].size;
+        }
+        return length;
+    }
+}
+
+// FIXME: Don't use s(n)printf
+char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
+{
+    range = sanitize_range(buffer, range);
+    // FIXME: I have no idea why i had to to this but revise this later
+    //range.to = buffer_move_marker(buffer, range.to, 1, 0);
+    int buf_len = range_length(buffer, range)+1;
+    char *buf = malloc(buf_len);
+    printf("alloc %d\n", buf_len);
+    if (range.from.line == range.to.line) {
+        snprintf(buf, buf_len, "%s", buffer->lines[range.from.line].data+range.from.column);
+    } else {
+        char *cur = buf;
+        cur += sprintf(cur, "%s", buffer->lines[range.from.line].data+range.from.column);
+
+        for (int i = range.from.line+1; i < range.to.line; ++i) {
+            cur += sprintf(cur, "%s\n", buffer->lines[i].data);
+        }
+        snprintf(cur, buffer->lines[range.to.line].size+1, "%s", buffer->lines[range.to.line].data);
+    }
+    buf[buf_len-1] = 0;
+    return buf;
+}
+
+// buffer_replace (accepts a range)
+// buffer_get (accepts a range, returns the string)
 
 struct buffer buffer_init() 
 {
@@ -52,108 +178,29 @@ struct buffer buffer_init()
     return buffer;
 }
 
-char *buffer_get_whole_file(struct buffer *buffer)
+
+struct buffer_marker buffer_move_marker(struct buffer *buffer, struct buffer_marker marker, int hor, int ver) 
 {
-    int sz = 1;
-    for (int i = 0; i < buffer->line_count; i += 1) {
-        sz += buffer->lines[i].size+1; // account for newline 
+    if (marker.column == 0 && hor < 0 && marker.line > 0) {
+        marker = buffer_move_marker(buffer, marker, 0, -1);
+        marker.column = buffer->lines[marker.line].size;
+        marker = buffer_move_marker(buffer, marker, hor+1, 0);
+        return marker;
     }
-
-    char *f = malloc(sz);
-    *f = 0;
-    for (int i = 0; i < buffer->line_count; i += 1) {
-        strcat(f, buffer->lines[i].data);
-        strcat(f, "\n");
+    else if (marker.column == buffer->lines[marker.line].size && hor > 0 && marker.line < buffer->line_count-1) {
+        marker = buffer_move_marker(buffer, marker, 0, 1);
+        marker.column = 0;
+        marker = buffer_move_marker(buffer, marker, hor-1, 0);
+        return marker;
     }
-    return f;
-}
-
-char *buffer_get_trimmed_line_at(struct buffer *buffer, int index) 
-{
-    if (index < 0) index = 0;
-    struct buffer_line current_line = buffer->lines[buffer->cursor.line];
-
-    if (index > current_line.size) 
-        index = current_line.size;
-
-    char *s = malloc(index+1);
-    memcpy(s, current_line.data, index);
-    s[index] = 0;
-
-    return s;
-}
-
-void buffer_move(struct buffer *buffer, int hor, int ver) 
-{
-    struct buffer_line current_line = buffer->lines[buffer->cursor.line];
-    if (buffer->cursor.column == 0 && hor < 0 && buffer->cursor.line > 0) {
-        buffer_move(buffer, 0, -1);
-        struct buffer_line current_line = buffer->lines[buffer->cursor.line];
-        buffer->cursor.column = buffer->cursor.remcol = current_line.size;
-        buffer_move(buffer, hor+1, 0);
-        return;
-    }
-    if (buffer->cursor.column == current_line.size && hor > 0 && buffer->cursor.line < buffer->line_count-1) {
-        buffer_move(buffer, 0, 1);
-        buffer->cursor.column = buffer->cursor.remcol = 0;
-        buffer_move(buffer, hor-1, 0);
-        return;
-    }
-
-    if (hor == 0)
-        buffer->cursor.column = buffer->cursor.remcol;
-    else
-        buffer->cursor.remcol = buffer->cursor.column += hor;
-
-    buffer->cursor.line += ver;
-    if (buffer->cursor.line < 0) buffer->cursor.line = 0;
-    if (buffer->cursor.line >= buffer->line_count) buffer->cursor.line = buffer->line_count-1;
-    current_line = buffer->lines[buffer->cursor.line];
-    if (buffer->cursor.column < 0) buffer->cursor.column = 0;
-    if (buffer->cursor.column > current_line.size) buffer->cursor.column = current_line.size;
-}
-
-void buffer_insert_character(struct buffer *buffer, int chara)
-{   
-    struct buffer_line *current_line = &buffer->lines[buffer->cursor.line];
-    buffer->dirty = 1;
-    if (chara == '\n') {
-        insert_line(buffer, buffer->cursor.line+1);
-        // reset due to realloc
-        current_line = &buffer->lines[buffer->cursor.line];
-        line_write_at(&buffer->lines[buffer->cursor.line+1], 0, current_line->data+buffer->cursor.column);
-        current_line->data[buffer->cursor.column] = 0;
-        current_line->size = buffer->cursor.column;
-        buffer_move(buffer, 0, 1);
-        buffer->cursor.column = 0;
-    } else {
-        line_put_at(current_line, buffer->cursor.column++, chara);
+    else {
+        marker.column += hor;
+        marker.line += ver;
+        marker = sanitize_marker(buffer, marker);
+        return marker;
     }
 }
 
-void buffer_write(struct buffer *buffer, char *s)
-{
-    while (*s)
-        buffer_insert_character(buffer, *s++);
-}
-
-void buffer_erase_character(struct buffer *buffer)
-{
-    struct buffer_line *current_line = &buffer->lines[buffer->cursor.line];
-    buffer->dirty = 1;
-    if (buffer->cursor.column == 0) {
-        if (buffer->cursor.line > 0) {
-            size_t at = buffer->lines[buffer->cursor.line-1].size;
-            line_write_at(&buffer->lines[buffer->cursor.line-1], at, current_line->data);
-            remove_line(buffer, buffer->cursor.line--);
-            buffer->cursor.column = at;
-        }
-        return;
-    }
-    char *at = current_line->data+buffer->cursor.column;
-    memmove(at-1, at, current_line->size---buffer->cursor.column--);
-    current_line->data[current_line->size] = 0;
-}
 
 void buffer_deinit(struct buffer *buffer)
 {

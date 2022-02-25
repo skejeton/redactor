@@ -7,7 +7,7 @@
 static void draw_line_number(int l, SDL_Point position, SDL_Renderer *renderer, struct docview *view)
 {
     SDL_SetRenderDrawColor(renderer, 250, 220, 200, 32);
-    if (view->buffer.cursor.line == l) {
+    if (view->doc.cursor.selection.from.line == l) {
         SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
     }
 
@@ -19,7 +19,7 @@ static void draw_line_number(int l, SDL_Point position, SDL_Renderer *renderer, 
 
 static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
-    struct buffer *buffer = &view->buffer;
+    struct buffer *buffer = &view->doc.buffer;
     SDL_Point position = (SDL_Point) { viewport.x, viewport.y };
     
     for (int i = 0; i < buffer->line_count; i++) {
@@ -37,10 +37,13 @@ static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct do
 static SDL_Rect get_cursor_rect(SDL_Rect viewport, struct docview *view)
 {
     SDL_Point viewport_pos = {viewport.x+40, viewport.y};
-    char *line = buffer_get_trimmed_line_at(&view->buffer, view->buffer.cursor.column);
+    struct buffer_range range = view->doc.cursor.selection;
+    range.to.line = range.from.line;
+    range.to.column = 0;
+    char *line = buffer_get_range(&view->doc.buffer, range);
     SDL_Point line_size = font_measure_text(line, view->font);
     free(line);
-    int at_line = view->buffer.cursor.line;
+    int at_line = range.from.line;
     SDL_Point cursor_position = { viewport_pos.x + line_size.x, viewport_pos.y + line_size.y * at_line };
     SDL_Rect cursor_rect = { cursor_position.x, cursor_position.y, 2, line_size.y };
     return cursor_rect;
@@ -68,16 +71,30 @@ static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
 void docview_tap(SDL_Rect viewport, SDL_Point xy, struct docview *view)
 {
     SDL_Point screen = {
-        viewport.x+xy.x+view->scroll_damped.x-40,
+        viewport.x+xy.x+view->scroll_damped.x-60,
         viewport.y+xy.y+view->scroll_damped.y,
     };
     
     // FIXME: This assumes a monospace font!!!!!
     SDL_Point glyph_size = font_measure_glyph(' ', view->font);
+    int line = screen.y/glyph_size.y-1;
+    // Normalize line 
+    line = buffer_move_marker(&view->doc.buffer, (struct buffer_marker){line}, 0, 0).line;
+    int w = 0;
+    // FIXME: Hardcode!
+    int mind = 100000;
+    int minl = view->doc.buffer.lines[line].size;
     
-    view->buffer.cursor.column = 0;
-    view->buffer.cursor.line = 0;
-    buffer_move(&view->buffer, screen.x/glyph_size.x-2, screen.y/glyph_size.y-1);
+    for (int i = 0; i <= view->doc.buffer.lines[line].size; ++i) {
+        if (abs(w - screen.x) < mind) {
+            mind = abs(w - screen.x);
+            minl = i;
+        }
+        if (i != view->doc.buffer.lines[line].size)
+            w += font_measure_glyph(view->doc.buffer.lines[line].data[i], view->font).x;
+    } 
+    
+    docedit_set_cursor(&view->doc, false, (struct buffer_marker){line, minl});
 }
 
 void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
@@ -85,13 +102,13 @@ void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *vie
     // TODO: Use deltatime
     view->blink += 0.016;
     // Reset cursor blink after a movement
-    if (view->prev_cursor_pos.line != view->buffer.cursor.line ||
-        view->prev_cursor_pos.column != view->buffer.cursor.column) {
-        view->blink = 0;
-        focus_on_cursor(viewport, view);
-    }
+    // if (view->prev_cursor_pos.line != view->buffer.cursor.line ||
+    //     view->prev_cursor_pos.column != view->buffer.cursor.column) {
+    //     view->blink = 0;
+    //     focus_on_cursor(viewport, view);
+    // }
         
-    view->prev_cursor_pos = view->buffer.cursor;
+    // view->prev_cursor_pos = view->buffer.cursor;
     
     SDL_RenderSetClipRect(renderer, &viewport);
 
