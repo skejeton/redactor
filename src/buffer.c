@@ -64,20 +64,25 @@ static struct buffer_marker sanitize_marker(struct buffer *buffer, struct buffer
     return marker;
 }
 
-
-static struct buffer_range sanitize_range(struct buffer *buffer, struct buffer_range range)
+static struct buffer_range swap_ranges(struct buffer_range range)
 {
-    range.from = sanitize_marker(buffer, range.from);
-    range.to = sanitize_marker(buffer, range.to);
     struct buffer_marker tmp;
-    
-    // Swap ranges so the from range is always before the to range
+
     if ((range.from.line > range.to.line) || 
         ((range.from.line == range.to.line) && (range.from.column > range.to.column))) {
         tmp = range.from;
         range.from = range.to;
         range.to = tmp;
     }
+    return range;
+}
+
+static struct buffer_range sanitize_range(struct buffer *buffer, struct buffer_range range)
+{
+    range.from = sanitize_marker(buffer, range.from);
+    range.to = sanitize_marker(buffer, range.to);
+    
+    range = swap_ranges(range);
     return range;
 }
 
@@ -144,27 +149,36 @@ static int range_length(struct buffer *buffer, struct buffer_range range)
     }
 }
 
-// FIXME: Don't use s(n)printf
+// FIXME: This function is atrocious
 char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
 {
+    range = swap_ranges(range);
+    int origcol = range.to.column;
     range = sanitize_range(buffer, range);
-    // FIXME: I have no idea why i had to to this but revise this later
-    //range.to = buffer_move_marker(buffer, range.to, 1, 0);
-    int buf_len = range_length(buffer, range)+1;
+    int nl = origcol > buffer->lines[range.from.line].size;
+    int range_len = range_length(buffer, range);
+    int buf_len = range_len+(range.to.line-range.from.line)+2;
     char *buf = malloc(buf_len);
-    printf("alloc %d\n", buf_len);
+    *buf = 0;
+    char *cur = buf;
+    
     if (range.from.line == range.to.line) {
-        snprintf(buf, buf_len, "%s", buffer->lines[range.from.line].data+range.from.column);
+        cur = strncat(buf, buffer->lines[range.from.line].data+range.from.column, range_len);
+        if (nl)
+            cur = strcat(cur, "\n");
     } else {
-        char *cur = buf;
-        cur += sprintf(cur, "%s", buffer->lines[range.from.line].data+range.from.column);
+        cur = strcat(cur, buffer->lines[range.from.line].data+range.from.column);
+        cur = strcat(cur, "\n");
 
         for (int i = range.from.line+1; i < range.to.line; ++i) {
-            cur += sprintf(cur, "%s\n", buffer->lines[i].data);
+            cur = strcat(cur, buffer->lines[i].data);
+            cur = strcat(cur, "\n");
         }
-        snprintf(cur, buffer->lines[range.to.line].size+1, "%s", buffer->lines[range.to.line].data);
+        cur = strncat(cur, buffer->lines[range.to.line].data,  buffer->lines[range.to.line].size);
+        if (nl)
+            cur = strcat(cur, "\n");
     }
-    buf[buf_len-1] = 0;
+    buf[buf_len-1] = 0; 
     return buf;
 }
 

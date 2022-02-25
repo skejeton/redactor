@@ -71,13 +71,13 @@ static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
 void docview_tap(SDL_Rect viewport, SDL_Point xy, struct docview *view)
 {
     SDL_Point screen = {
-        viewport.x+xy.x+view->scroll_damped.x-60,
-        viewport.y+xy.y+view->scroll_damped.y,
+        xy.x-viewport.x+view->scroll_damped.x-40,
+        xy.y-viewport.y+view->scroll_damped.y,
     };
     
     // FIXME: This assumes a monospace font!!!!!
     SDL_Point glyph_size = font_measure_glyph(' ', view->font);
-    int line = screen.y/glyph_size.y-1;
+    int line = screen.y/glyph_size.y;
     // Normalize line 
     line = buffer_move_marker(&view->doc.buffer, (struct buffer_marker){line}, 0, 0).line;
     int w = 0;
