@@ -14,7 +14,7 @@ const char *font_path = "data/monospace.ttf";
 struct font *font;
 bool running = true;
 bool is_file_new = false;
-bool ctrl = 0;
+bool ctrl = 0, shift = 0;
 bool focused = 1;
 const char *filename = "tests/main.c";
 
@@ -84,27 +84,33 @@ void loop() {
                             free(file);
                         }
                         break;
+                    case SDL_SCANCODE_C:
+                        if (ctrl) {
+                            char *c = docedit_get_selection(&document.doc);
+                            SDL_SetClipboardText(c);
+                        }
+                        break;
                     case SDL_SCANCODE_V:
                         if (ctrl) {
                             char *s = SDL_GetClipboardText();
                             docedit_insert(&document.doc, s);
-                            free(s);
+                            SDL_free(s);
                         }
                         break;
                     case SDL_SCANCODE_BACKSPACE:
                         docedit_erase(&document.doc);
                         break;
                     case SDL_SCANCODE_UP:
-                        docedit_move_cursor(&document.doc, 0, 0, -1);
+                        docedit_move_cursor(&document.doc, shift, 0, -1);
                         break;
                     case SDL_SCANCODE_DOWN:
-                        docedit_move_cursor(&document.doc, 0, 0, 1);
+                        docedit_move_cursor(&document.doc, shift, 0, 1);
                         break;
                     case SDL_SCANCODE_LEFT:
-                        docedit_move_cursor(&document.doc, 0, -1, 0);
+                        docedit_move_cursor(&document.doc, shift, -1, 0);
                         break;
                     case SDL_SCANCODE_RIGHT:
-                        docedit_move_cursor(&document.doc, 0, 1, 0);
+                        docedit_move_cursor(&document.doc, shift, 1, 0);
                         break;
                     case SDL_SCANCODE_RETURN:
                         docedit_insert(&document.doc, "\n");
@@ -117,12 +123,19 @@ void loop() {
                     case SDL_SCANCODE_RCTRL:
                         ctrl = 1;
                         break;
+                    case SDL_SCANCODE_LSHIFT:
+                    case SDL_SCANCODE_RSHIFT:
+                        shift = 1;
+                        break;
                     }
                     break;
                 case SDL_KEYUP:
                     if (event.key.keysym.scancode == SDL_SCANCODE_LCTRL ||
                         event.key.keysym.scancode == SDL_SCANCODE_RCTRL)
                         ctrl = 0;
+                    if (event.key.keysym.scancode == SDL_SCANCODE_LSHIFT ||
+                        event.key.keysym.scancode == SDL_SCANCODE_RSHIFT)
+                        shift = 0;
                     break;
                 case SDL_QUIT:
                     running = 0;

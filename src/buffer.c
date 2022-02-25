@@ -77,6 +77,10 @@ static struct buffer_range swap_ranges(struct buffer_range range)
     return range;
 }
 
+struct buffer_range buffer_swap_ranges(struct buffer_range range) {
+    return swap_ranges(range);
+}
+
 static struct buffer_range sanitize_range(struct buffer *buffer, struct buffer_range range)
 {
     range.from = sanitize_marker(buffer, range.from);
@@ -174,7 +178,7 @@ char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
             cur = strcat(cur, buffer->lines[i].data);
             cur = strcat(cur, "\n");
         }
-        cur = strncat(cur, buffer->lines[range.to.line].data,  buffer->lines[range.to.line].size);
+        cur = strncat(cur, buffer->lines[range.to.line].data,  range.to.column);
         if (nl)
             cur = strcat(cur, "\n");
     }

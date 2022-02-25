@@ -17,6 +17,36 @@ static void draw_line_number(int l, SDL_Point position, SDL_Renderer *renderer, 
 }
 
 
+static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
+{
+    struct buffer_marker marker = buffer_swap_ranges(view->doc.cursor.selection).from;
+    struct buffer_range range = (struct buffer_range) { {marker.line, 0}, marker };
+    char *s = buffer_get_range(&view->doc.buffer, range);
+    SDL_Point size = font_measure_text(s, view->font);
+    free(s);
+    int x = size.x;
+    int y = viewport.y+marker.line*size.y;
+    s = buffer_get_range(&view->doc.buffer, view->doc.cursor.selection);
+
+    // TODO handle variable length
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 16);
+    for (int i = 0; s[i];) {
+        int orig = i;
+        while (s[i] && s[i] != '\n')
+            i++;
+        int c = s[i];
+        s[i] = 0;
+        int w = font_measure_text(s+orig, view->font).x;
+        SDL_RenderFillRect(renderer, &(SDL_Rect){50+x, y, w, size.y});
+        s[i] = c;
+        i++;
+        x = 0;
+        y += size.y;
+    }
+    free(s);
+}
+
+
 static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
     struct buffer *buffer = &view->doc.buffer;
@@ -34,12 +64,10 @@ static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct do
 }
 
 
-static SDL_Rect get_cursor_rect(SDL_Rect viewport, struct docview *view)
+static SDL_Rect get_marker_rect(SDL_Rect viewport, struct buffer_marker marker, struct docview *view)
 {
     SDL_Point viewport_pos = {viewport.x+40, viewport.y};
-    struct buffer_range range = view->doc.cursor.selection;
-    range.to.line = range.from.line;
-    range.to.column = 0;
+    struct buffer_range range = (struct buffer_range) { {marker.line, 0}, marker };
     char *line = buffer_get_range(&view->doc.buffer, range);
     SDL_Point line_size = font_measure_text(line, view->font);
     free(line);
@@ -52,7 +80,10 @@ static SDL_Rect get_cursor_rect(SDL_Rect viewport, struct docview *view)
 
 static void draw_cursor(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
-    SDL_Rect cursor_rect = get_cursor_rect(viewport, view);
+    SDL_Rect cursor_rect = get_marker_rect(viewport, view->doc.cursor.selection.from, view);
+    SDL_Rect cursor2_rect = get_marker_rect(viewport, view->doc.cursor.selection.to, view);
+    SDL_SetRenderDrawColor(renderer, 0, 150, 220, 255.0*(cos(view->blink*8)/2+0.5));
+    SDL_RenderFillRect(renderer, &cursor2_rect);
     SDL_SetRenderDrawColor(renderer, 220, 150, 0, 255.0*(cos(view->blink*8)/2+0.5));
     SDL_RenderFillRect(renderer, &cursor_rect);
 }
@@ -60,7 +91,7 @@ static void draw_cursor(SDL_Rect viewport, SDL_Renderer *renderer, struct docvie
 
 static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
 {
-    SDL_Rect cursor_rect = get_cursor_rect(viewport, view);
+    SDL_Rect cursor_rect = get_marker_rect(viewport, view->doc.cursor.selection.from, view);
     cursor_rect.y -= viewport.y;
     if (cursor_rect.y > (view->scroll.y+viewport.h-cursor_rect.h))
         view->scroll.y = cursor_rect.y+cursor_rect.h-viewport.h;
@@ -102,13 +133,13 @@ void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *vie
     // TODO: Use deltatime
     view->blink += 0.016;
     // Reset cursor blink after a movement
-    // if (view->prev_cursor_pos.line != view->buffer.cursor.line ||
-    //     view->prev_cursor_pos.column != view->buffer.cursor.column) {
-    //     view->blink = 0;
-    //     focus_on_cursor(viewport, view);
-    // }
+    if (view->doc.cursor.selection.from.line != view->prev_cursor_pos.line ||
+        view->doc.cursor.selection.from.column != view->prev_cursor_pos.column) {
+        view->blink = 0;
+        focus_on_cursor(viewport, view);
+    }
         
-    // view->prev_cursor_pos = view->buffer.cursor;
+    view->prev_cursor_pos = view->doc.cursor.selection.from;
     
     SDL_RenderSetClipRect(renderer, &viewport);
 
@@ -120,7 +151,8 @@ void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *vie
     
     viewport.y -= view->scroll_damped.y;
     SDL_Point buffer_size = draw_lines(viewport, renderer, view);    
-    
+    draw_highlight(viewport, renderer, view);
+
     // Clamp scrolling to not scroll outside bounds
     if (view->scroll.y > buffer_size.y-viewport.y-50)
         view->scroll.y = buffer_size.y-viewport.y-50;

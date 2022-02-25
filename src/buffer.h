@@ -32,5 +32,6 @@ struct buffer_marker buffer_remove(struct buffer *buffer, struct buffer_range ra
 struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker marker, const char *text);
 struct buffer_marker buffer_move_marker(struct buffer *buffer, struct buffer_marker marker, int hor, int ver);
 char *buffer_get_range(struct buffer *buffer, struct buffer_range range);
+struct buffer_range buffer_swap_ranges(struct buffer_range range);
 #endif
 

@@ -16,6 +16,11 @@ void docedit_set_cursor(struct docedit *docedit, bool select, struct buffer_mark
     }
 }
 
+char *docedit_get_selection(struct docedit *docedit) 
+{
+    return buffer_get_range(&docedit->buffer, docedit->cursor.selection);
+}
+
 void docedit_move_cursor(struct docedit *docedit, bool select, int hor, int ver)
 {
     docedit_set_cursor(docedit, select, buffer_move_marker(&docedit->buffer, docedit->cursor.selection.from, hor, ver));
@@ -28,5 +33,5 @@ void docedit_erase(struct docedit *docedit)
             docedit->cursor.selection.from = buffer_move_marker(&docedit->buffer, docedit->cursor.selection.from, -1, 0);
         }
     
-    docedit->cursor.selection.to = buffer_remove(&docedit->buffer, docedit->cursor.selection);
+    docedit->cursor.selection.from = docedit->cursor.selection.to = buffer_remove(&docedit->buffer, docedit->cursor.selection);
 }

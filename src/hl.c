@@ -18,7 +18,8 @@ static bool getstr(const char *text, const char **end)
         while (*text && *text != '"')
             if (*text++ == '\\')
                 text++;
-        text++;
+        if (*text)
+            text++;
         *end = text;
         return 1;
     }
