@@ -105,6 +105,7 @@ struct buffer_marker buffer_remove(struct buffer *buffer, struct buffer_range ra
         erase_from_line(&buffer->lines[range.from.line], range.from.column, range.to.column);
     } else {
         buffer->lines[range.from.line].data[range.from.column] = 0;
+        buffer->lines[range.from.line].size = range.from.column;
         line_write_at(&buffer->lines[range.from.line], range.from.column, buffer->lines[range.to.line].data+range.to.column);
 
         for (int i = range.from.line+1; i <= range.to.line; ++i) {
@@ -120,8 +121,8 @@ struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker m
     buffer->dirty = true;
     marker = sanitize_marker(buffer, marker);
     
-    while (*text) {
-        char c = *text++;
+    char c;
+    while ((c = *text++)) {
         if (c == '\n') {
             int pl = marker.line;
             char *tail = buffer->lines[marker.line].data+marker.column;

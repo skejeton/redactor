@@ -39,7 +39,8 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
         int w = font_measure_text(s+orig, view->font).x;
         SDL_RenderFillRect(renderer, &(SDL_Rect){50+x, y, w, size.y});
         s[i] = c;
-        i++;
+        if (s[i])
+            i++;
         x = 0;
         y += size.y;
     }
@@ -130,6 +131,11 @@ void docview_tap(bool shift, SDL_Rect viewport, SDL_Point xy, struct docview *vi
 
 void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
+/*
+    char *s = buffer_get_range(&view->doc.buffer, (struct buffer_range) {{10000, 10000}});
+    printf("=======\n%s\n", s);
+    free(s);
+    */
     // TODO: Use deltatime
     view->blink += 0.016;
     // Reset cursor blink after a movement

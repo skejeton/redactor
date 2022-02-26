@@ -3,7 +3,7 @@ Erase tabulations immediately not every space one by one
 Fix cursor staying in the wrong "remember" position after write (or don't?)
 Put indentations after a brace
 Highlight include path as a string
-Highlight define value as general syntax?f
+Highlight define value as general syntax?
 Make a command line that darkens the code content and lets you open files, etc
 Display whether the file was created or opened
 Watch for file changes
@@ -18,9 +18,9 @@ Make Shift+Enter insert a new line before the one you're on
 Fix high cpu usage <-- Implement font atlas
 Scrolling horizontally
 Make shift+tab append a tab at the beginning
->>Rewrite buffer.h to accept cursor positions and manage the cursor as an extra API instead of primary
 Allow to change font sizes
 Extracting position/size SDL_Point from SDL_Rect
 Align putting cursor using mouse to rounded character offset (x direction)
->>Fix putting cursor using mouse for non monospace fonts!
 Use `to` as the cursor not `from`
+Double tap to select a word
+Triple tap to select the whole line
