@@ -16,6 +16,7 @@ bool running = true;
 bool is_file_new = false;
 bool ctrl = 0, shift = 0;
 bool focused = 1;
+int font_size = 17;
 const char *filename = "tests/main.c";
 
 static char* read_whole_file(const char* path)
@@ -44,6 +45,7 @@ static void write_whole_file(const char* path, const char *contents)
     fclose(f);
 }
 
+bool mousedown = 0;
 
 void loop() {
     int sw, sh;
@@ -62,8 +64,8 @@ void loop() {
                     document.scroll.y -= event.wheel.y*30;
                     break;
                 case SDL_MOUSEBUTTONDOWN:
-                    if (event.button.button == SDL_BUTTON_LEFT)
-                        docview_tap((SDL_Rect) {10, 10, sw, sh-40}, (SDL_Point) {event.button.x, event.button.y}, &document);
+                case SDL_MOUSEBUTTONUP:
+                    mousedown = event.button.button == SDL_BUTTON_LEFT && event.type == SDL_MOUSEBUTTONDOWN;
                 case SDL_WINDOWEVENT:
                 switch (event.window.event) {
                     case SDL_WINDOWEVENT_FOCUS_GAINED:
@@ -142,6 +144,12 @@ void loop() {
             }
         }
 
+        int mouse_x, mouse_y;
+        SDL_GetMouseState(&mouse_x, &mouse_y);
+        
+        if (mousedown && focused)
+            docview_tap(shift, (SDL_Rect) {10, 10, sw, sh-40}, (SDL_Point) {mouse_x, mouse_y}, &document);
+
         SDL_SetRenderDrawColor(renderer, 32, 26, 23, 255);
         SDL_RenderClear(renderer);
 
@@ -153,7 +161,7 @@ void loop() {
         char txt[1024];
         snprintf(txt, 1024, "%s %s%s%d:%d fs: %d", 
             filename, is_file_new ? "(new) " : "", document.doc.buffer.dirty ? "* " : "",
-            document.doc.cursor.selection.from.line+1, document.doc.cursor.selection.from.column+1, 17 /*font_size*/);
+            document.doc.cursor.selection.from.line+1, document.doc.cursor.selection.from.column+1, font_size);
         font_write_text(txt, (SDL_Point){0+5, sh-30+5}, renderer, font);
         SDL_RenderPresent(renderer);
     }
@@ -189,7 +197,7 @@ int main(int argc, char *argv[]) {
     }
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-    font = document.font = font_init(font_path, 17 /*font_size*/, renderer);
+    font = document.font = font_init(font_path, font_size, renderer);
 
     document.doc.buffer = buffer_init();
     char *file = read_whole_file(filename);
@@ -201,7 +209,9 @@ int main(int argc, char *argv[]) {
 
         buffer_insert(&document.doc.buffer, (struct buffer_marker){0, 0}, file);
     }
-
+    SDL_Cursor *cur = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+    SDL_SetCursor(cur);
+    // SDL_FreeCursor(cur);
     document.doc.buffer.dirty = 0;
     free(file);
     

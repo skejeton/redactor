@@ -14,5 +14,5 @@ struct docview {
 };
 
 void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view);
-void docview_tap(SDL_Rect viewport, SDL_Point xy, struct docview *view);
+void docview_tap(bool shift, SDL_Rect viewport, SDL_Point xy, struct docview *view);
 #endif

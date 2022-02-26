@@ -99,7 +99,7 @@ static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
         view->scroll.y = cursor_rect.y;
 }
 
-void docview_tap(SDL_Rect viewport, SDL_Point xy, struct docview *view)
+void docview_tap(bool shift, SDL_Rect viewport, SDL_Point xy, struct docview *view)
 {
     SDL_Point screen = {
         xy.x-viewport.x+view->scroll_damped.x-40,
@@ -125,7 +125,7 @@ void docview_tap(SDL_Rect viewport, SDL_Point xy, struct docview *view)
             w += font_measure_glyph(view->doc.buffer.lines[line].data[i], view->font).x;
     } 
     
-    docedit_set_cursor(&view->doc, false, (struct buffer_marker){line, minl});
+    docedit_set_cursor(&view->doc, shift, (struct buffer_marker){line, minl});
 }
 
 void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
