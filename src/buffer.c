@@ -205,7 +205,7 @@ struct buffer_marker buffer_move_marker(struct buffer *buffer, struct buffer_mar
         marker = buffer_move_marker(buffer, marker, hor+1, 0);
         return marker;
     }
-    else if (marker.column == buffer->lines[marker.line].size && hor > 0 && marker.line < buffer->line_count-1) {
+    else if (marker.line < buffer->line_count-1 && marker.column == buffer->lines[marker.line].size && hor > 0) {
         marker = buffer_move_marker(buffer, marker, 0, 1);
         marker.column = 0;
         marker = buffer_move_marker(buffer, marker, hor-1, 0);
@@ -214,8 +214,7 @@ struct buffer_marker buffer_move_marker(struct buffer *buffer, struct buffer_mar
     else {
         marker.column += hor;
         marker.line += ver;
-        marker = sanitize_marker(buffer, marker);
-        return marker;
+        return sanitize_marker(buffer, marker);
     }
 }
 

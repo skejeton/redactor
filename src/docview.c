@@ -121,7 +121,7 @@ void docview_tap(bool shift, SDL_Rect viewport, SDL_Point xy, struct docview *vi
             mind = abs(w - screen.x);
             minl = i;
         }
-        if (i != view->doc.buffer.lines[line].size)
+        if (i < view->doc.buffer.lines[line].size)
             w += font_measure_glyph(view->doc.buffer.lines[line].data[i], view->font).x;
     } 
     

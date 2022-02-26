@@ -51,6 +51,8 @@ void loop() {
     int sw, sh;
 
     while (running) {
+        int mouse_x, mouse_y;
+        SDL_GetMouseState(&mouse_x, &mouse_y);
         SDL_GetWindowSize(window, &sw, &sh);
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -66,15 +68,20 @@ void loop() {
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP:
                     mousedown = event.button.button == SDL_BUTTON_LEFT && event.type == SDL_MOUSEBUTTONDOWN;
+                    if (mousedown) {
+                        docview_tap(false, (SDL_Rect) {10, 10, sw, sh-40}, (SDL_Point) {mouse_x, mouse_y}, &document);
+                    }    
+                    break;
                 case SDL_WINDOWEVENT:
-                switch (event.window.event) {
+                    switch (event.window.event) {
                     case SDL_WINDOWEVENT_FOCUS_GAINED:
                         focused = 1;
                         break;
                     case SDL_WINDOWEVENT_FOCUS_LOST:
                         focused = 0;
                         break;
-                }
+                    }
+                    break;
                 case SDL_KEYDOWN:
                     switch (event.key.keysym.scancode) {
                     case SDL_SCANCODE_S:
@@ -143,13 +150,10 @@ void loop() {
                     running = 0;
             }
         }
-
-        int mouse_x, mouse_y;
-        SDL_GetMouseState(&mouse_x, &mouse_y);
         
-        if (mousedown && focused)
-            docview_tap(shift, (SDL_Rect) {10, 10, sw, sh-40}, (SDL_Point) {mouse_x, mouse_y}, &document);
-
+        if (mousedown && focused) {
+            docview_tap(true, (SDL_Rect) {10, 10, sw, sh-40}, (SDL_Point) {mouse_x, mouse_y}, &document);
+        }
         SDL_SetRenderDrawColor(renderer, 32, 26, 23, 255);
         SDL_RenderClear(renderer);
 
