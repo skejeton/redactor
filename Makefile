@@ -1,4 +1,4 @@
-FILES = ./src/buffer.c ./src/main.c ./src/font.c ./src/docview.c ./src/docedit.c
+FILES = ./src/*.c
 LDFLAGS = -lSDL2 -lSDL2_ttf -lm
 OPTFLAGS = -g -fsanitize=address
 
@@ -7,4 +7,3 @@ all:
 
 run: all
 	./a.out
-

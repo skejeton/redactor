@@ -24,3 +24,4 @@ Align putting cursor using mouse to rounded character offset (x direction)
 Use `to` as the cursor not `from`
 Double tap to select a word
 Triple tap to select the whole line
+Handle unsuccessful file write

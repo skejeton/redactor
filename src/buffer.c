@@ -6,7 +6,6 @@
 #define LINE_REALLOC_PERIOD 1024
 #define LINES_REALLOC_PERIOD 32
 
-void buffer_move(struct buffer *buffer, int hor, int ver);
 
 static void add_line(struct buffer *buffer)
 {
@@ -187,8 +186,6 @@ char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
     return buf;
 }
 
-// buffer_replace (accepts a range)
-// buffer_get (accepts a range, returns the string)
 
 struct buffer buffer_init() 
 {

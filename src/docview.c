@@ -60,6 +60,8 @@ static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct do
         // TODO: Handle the offset more appropriately
         SDL_Point line_position = (SDL_Point) { position.x + 40, position.y };
         position.y += write_line(buffer->lines[i].data, line_position, view->font, renderer);
+        if (position.y > viewport.h)
+            break;
     }
     return position;
 }
