@@ -2,6 +2,16 @@
 #include "font.h"
 #include "util.h"
 
+static void change_document_font_size(struct docview *view, int delta, SDL_Renderer *renderer)
+{
+    int size = font_size(view->font) + delta;
+    if (size < 5)
+        size = 5;
+    if (size > 40)
+        size = 40;
+    font_resize(view->font, size, renderer);
+}
+
 void input_process_event(struct input_state *state, struct input_pass pass)
 {
     struct docedit *editor = &pass.view->doc;
@@ -20,7 +30,11 @@ void input_process_event(struct input_state *state, struct input_pass pass)
         }
     } break;
     case SDL_MOUSEWHEEL:
-        view->scroll.y -= event->wheel.y*30;
+        if (state->ctrl) {
+            change_document_font_size(view, event->wheel.y, pass.renderer);
+        } else {   
+            view->scroll.y -= event->wheel.y*30;
+        }
         break;
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:
@@ -74,12 +88,12 @@ void input_process_event(struct input_state *state, struct input_pass pass)
             break;
         case SDL_SCANCODE_MINUS:
             if (state->ctrl) {
-                font_resize(view->font, font_size(view->font)-1, pass.renderer);
+                change_document_font_size(view, -1, pass.renderer);
             }
             break;
         case SDL_SCANCODE_EQUALS:
             if (state->ctrl) {
-                font_resize(view->font, font_size(view->font)+1, pass.renderer);
+                change_document_font_size(view, 1, pass.renderer);
             }
             break;
         case SDL_SCANCODE_BACKSPACE:
