@@ -9,8 +9,8 @@ struct docview {
     float blink;
     // Tracking the change in position of a cursor to reset the blink
     struct buffer_marker prev_cursor_pos;
-    SDL_Point scroll;
-    SDL_Point scroll_damped;
+    SDL_FPoint scroll;
+    SDL_FPoint scroll_damped;
 };
 
 void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view);

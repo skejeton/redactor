@@ -1,4 +1,5 @@
 FILES = $(shell echo src/*.c)
+HEADERS = $(shell echo src/*.h)
 OBJECTS = $(FILES:.c=.o)
 LDFLAGS = -lSDL2 -lSDL2_ttf -lm -lc
 OPTFLAGS = -g -fsanitize=address
@@ -9,7 +10,8 @@ all: $(SOURCES) $(EXECUTABLE)
 $(EXECUTABLE): $(OBJECTS)
 	clang $(LDFLAGS) $(OBJECTS) -o $@
 
-.c.o:
+# NOTE: This rebuilds the entire project when header is changed!
+%.o: %.c $(HEADERS)
 	cc -c $< -o $@
 
 run: all

@@ -138,6 +138,7 @@ void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *vie
     printf("=======\n%s\n", s);
     free(s);
     */
+   
     // TODO: Use deltatime
     view->blink += 0.016;
     // Reset cursor blink after a movement
@@ -156,8 +157,9 @@ void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *vie
     // Smooth out the scrolling
     view->scroll_damped.x += (view->scroll.x-view->scroll_damped.x)/5;
     view->scroll_damped.y += (view->scroll.y-view->scroll_damped.y)/5;
-    
+
     viewport.y -= view->scroll_damped.y;
+    viewport.x -= view->scroll_damped.x;
     SDL_Point buffer_size = draw_lines(viewport, renderer, view);    
     draw_highlight(viewport, renderer, view);
 
