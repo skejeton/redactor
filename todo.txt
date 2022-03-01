@@ -5,10 +5,8 @@ Put indentations after a brace
 Highlight include path as a string
 Highlight define value as general syntax?
 Make a command line that darkens the code content and lets you open files, etc
-Display whether the file was created or opened
 Watch for file changes
 Allow for non ascii characters (at least basic like Cyrillic, Spanish, e.t.c)
-When you click on the code area, move cursor to the symbol it's pointing to
 Handle escape sequences in a string (highlighting)
 Do syntax highlighting based on the file type
 Highlight brace pairs
@@ -16,12 +14,10 @@ Show errors for unclosed braces !!AND IGNORE ONES IN STRINGS/CHARS/COMMENTS!!
 Smooth cursor movement
 Make Shift+Enter insert a new line before the one you're on
 Fix high cpu usage <-- Implement font atlas
-Scrolling horizontally
 Make shift+tab append a tab at the beginning
-Allow to change font sizes
 Extracting position/size SDL_Point from SDL_Rect
-Align putting cursor using mouse to rounded character offset (x direction)
 Use `to` as the cursor not `from`
 Double tap to select a word
 Triple tap to select the whole line
 Handle unsuccessful file write
+CTRL+Alt+C and other operations that will copy content in parentheses enclosed near cursor 
