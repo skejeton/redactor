@@ -19,6 +19,7 @@ bool is_file_new = false;
 int font_size = 19;
 const char *filename = "tests/main.c";
 struct input_state input_state;
+int screen_width, screen_height;
 
 static struct input_pass get_input_pass(SDL_Event *event)
 {
@@ -28,13 +29,51 @@ static struct input_pass get_input_pass(SDL_Event *event)
     };
 }
 
+void draw_statusbar(struct view *view)
+{
+    SDL_Rect view_rect = ui_get_view_rect(view);
+    char txt[1024];
+    SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
+    snprintf(txt, 1024, "%s %s%s%d:%d fs: %d", 
+        filename, is_file_new ? "(new) " : "", document.doc.buffer.dirty ? "* " : "",
+        document.doc.cursor.selection.from.line+1, document.doc.cursor.selection.from.column+1, font_size);
+
+    SDL_Point text_size = font_measure_text(txt, font);
+    SDL_Rect text_rect = { view_rect.x, view_rect.y, text_size.x, text_size.y };
+    text_rect = ui_center_y(view, text_rect);
+    SDL_Point text_position = { text_rect.x, text_rect.y };
+
+    font_write_text(txt, text_position, renderer, font);
+}
+
+void draw_view(struct view *view)
+{
+ //  SDL_Rect view_rect = ui_get_view_rect(view);
+ //   SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+ //   SDL_RenderDrawRect(renderer, &view_rect);
+}
+
+void ui()
+{
+    struct view screen, docview, statusbar;
+    screen = ui_default_view(0, 0, screen_width, screen_height);
+    statusbar = ui_cut_bottom(&screen, font_measure_glyph(' ', font).y);
+    docview = screen;
+    document.viewport = ui_get_view_rect(&docview);
+
+    draw_view(&docview);
+    draw_view(&statusbar);
+
+    docview_draw(renderer, &document);
+    draw_statusbar(&statusbar);
+}
+
 void loop() {
-    int sw, sh;
 
     while (running) {
         int mouse_x, mouse_y;
         SDL_GetMouseState(&mouse_x, &mouse_y);
-        SDL_GetWindowSize(window, &sw, &sh);
+        SDL_GetWindowSize(window, &screen_width, &screen_height);
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             input_process_event(&input_state, get_input_pass(&event));
@@ -42,21 +81,11 @@ void loop() {
 
         
         if (input_state.leftmousedown && input_state.focused) {
-            docview_tap(true, (SDL_Rect) {10, 10, sw, sh-40}, (SDL_Point) {mouse_x, mouse_y}, &document);
+            docview_tap(true, (SDL_Point) {mouse_x, mouse_y}, &document);
         }
         SDL_SetRenderDrawColor(renderer, 32, 26, 23, 255);
         SDL_RenderClear(renderer);
-
-        
-        docview_draw((SDL_Rect) {10, 10, sw, sh-40}, renderer, &document);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 16);
-        SDL_RenderFillRect(renderer, &(SDL_Rect){0, sh - 30, 2000, 1});
-        SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
-        char txt[1024];
-        snprintf(txt, 1024, "%s %s%s%d:%d fs: %d", 
-            filename, is_file_new ? "(new) " : "", document.doc.buffer.dirty ? "* " : "",
-            document.doc.cursor.selection.from.line+1, document.doc.cursor.selection.from.column+1, font_size);
-        font_write_text(txt, (SDL_Point){0+5, sh-30+5}, renderer, font);
+        ui();
         SDL_RenderPresent(renderer);
     }
 }

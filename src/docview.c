@@ -37,7 +37,7 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
         int c = s[i];
         s[i] = 0;
         int w = font_measure_text(s+orig, view->font).x;
-        SDL_RenderFillRect(renderer, &(SDL_Rect){50+x, y, w, size.y});
+        SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+40+x, y, w, size.y});
         s[i] = c;
         if (s[i])
             i++;
@@ -102,8 +102,10 @@ static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
         view->scroll.y = cursor_rect.y;
 }
 
-void docview_tap(bool shift, SDL_Rect viewport, SDL_Point xy, struct docview *view)
+void docview_tap(bool shift, SDL_Point xy, struct docview *view)
 {
+    SDL_Rect viewport = view->viewport;
+
     SDL_Point screen = {
         xy.x-viewport.x+view->scroll_damped.x-40,
         xy.y-viewport.y+view->scroll_damped.y,
@@ -131,14 +133,9 @@ void docview_tap(bool shift, SDL_Rect viewport, SDL_Point xy, struct docview *vi
     docedit_set_cursor(&view->doc, shift, (struct buffer_marker){line, minl});
 }
 
-void docview_draw(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
+void docview_draw(SDL_Renderer *renderer, struct docview *view)
 {
-/*
-    char *s = buffer_get_range(&view->doc.buffer, (struct buffer_range) {{10000, 10000}});
-    printf("=======\n%s\n", s);
-    free(s);
-    */
-   
+    SDL_Rect viewport = view->viewport;
     // TODO: Use deltatime
     view->blink += 0.016;
     // Reset cursor blink after a movement

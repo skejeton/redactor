@@ -25,7 +25,7 @@ void input_process_event(struct input_state *state, struct input_pass pass)
     case SDL_MOUSEBUTTONUP:
         state->leftmousedown = event->button.button == SDL_BUTTON_LEFT && event->type == SDL_MOUSEBUTTONDOWN;
         if (state->leftmousedown) {
-            docview_tap(false, (SDL_Rect) {10, 10, sw, sh-40}, (SDL_Point) {mouse_x, mouse_y}, view);
+            docview_tap(false, (SDL_Point) {mouse_x, mouse_y}, view);
         }    
         break;
     case SDL_WINDOWEVENT:
