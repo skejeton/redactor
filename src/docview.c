@@ -77,12 +77,22 @@ static void draw_cursor(SDL_Rect viewport, SDL_Renderer *renderer, struct docvie
 
 static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
 {
+    viewport.x += view->line_column_viewport.w;
+    viewport.w -= view->line_column_viewport.w;
+
     SDL_Rect cursor_rect = get_marker_rect(viewport, view->doc.cursor.selection.from, view);
     cursor_rect.y -= viewport.y;
     if (cursor_rect.y > (view->scroll.y+viewport.h-cursor_rect.h))
         view->scroll.y = cursor_rect.y+cursor_rect.h-viewport.h;
     if (cursor_rect.y < viewport.y+view->scroll.y)
         view->scroll.y = cursor_rect.y;
+    int charw = font_measure_glyph(' ', view->font).x;
+
+    cursor_rect.x -= viewport.x-charw;
+    if (cursor_rect.x > (view->scroll.x+viewport.w-cursor_rect.w))
+        view->scroll.x = cursor_rect.x+cursor_rect.w-viewport.w;
+    if (cursor_rect.x-view->scroll.x-charw*2 < 0)
+        view->scroll.x += cursor_rect.x-view->scroll.x-charw*2;
 }
 
 void docview_tap(bool shift, SDL_Point xy, struct docview *view)
@@ -123,7 +133,7 @@ void docview_draw_lines(SDL_Rect *viewport, SDL_Renderer *renderer, struct docvi
     snprintf(line_no_text, 32, "%d", last_line_no);
     int max_width = font_measure_text(line_no_text, view->font).x;
     SDL_Point position = {viewport->x, viewport->y};
-
+    SDL_SetRenderDrawColor(renderer, 32, 26, 23, 255);
     SDL_SetRenderDrawColor(renderer, 250, 220, 200, 32);
     for (int i = 0; i < last_line_no; i++) {
         snprintf(line_no_text, 32, "%d", i+1);
@@ -139,19 +149,22 @@ void docview_draw_lines(SDL_Rect *viewport, SDL_Renderer *renderer, struct docvi
 void docview_draw(SDL_Renderer *renderer, struct docview *view)
 {
     SDL_Rect viewport = view->viewport;
-    // TODO: Use deltatime
-    view->blink += 0.016;
-    // Reset cursor blink after a movement
     if (view->doc.cursor.selection.from.line != view->prev_cursor_pos.line ||
         view->doc.cursor.selection.from.column != view->prev_cursor_pos.column) {
+        // Reset cursor blink after a movement
         view->blink = 0;
         focus_on_cursor(viewport, view);
     }
+
+    // TODO: Use deltatime
+    view->blink += 0.016;
+
         
     view->prev_cursor_pos = view->doc.cursor.selection.from;
     
-    SDL_RenderSetClipRect(renderer, &viewport);
 
+    if (view->scroll.x < 0) 
+        view->scroll.x = 0;
     if (view->scroll.y < 0) 
         view->scroll.y = 0;
     // Smooth out the scrolling
@@ -159,9 +172,12 @@ void docview_draw(SDL_Renderer *renderer, struct docview *view)
     view->scroll_damped.y += (view->scroll.y-view->scroll_damped.y)/5;
 
     viewport.y -= view->scroll_damped.y;
-    viewport.x -= view->scroll_damped.x;
 
     docview_draw_lines(&viewport, renderer, view);
+    viewport.y += view->scroll_damped.y;
+    SDL_RenderSetClipRect(renderer, &viewport);
+    viewport.y -= view->scroll_damped.y;
+    viewport.x -= view->scroll_damped.x;
     SDL_Point buffer_size = draw_lines(viewport, renderer, view);    
     draw_highlight(viewport, renderer, view);
 

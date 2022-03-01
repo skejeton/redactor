@@ -32,6 +32,6 @@ SDL_Rect rect_cut_bottom(SDL_Rect *r, int by)
 
 SDL_Rect rect_inset(SDL_Rect r, int by)
 {
-    return (SDL_Rect) { r.x + by, r.y + by, r.w - by*2, r.h - by*2 };
+    return (SDL_Rect){r.x + by, r.y + by, r.w - by*2, r.h - by*2};
 }
 
