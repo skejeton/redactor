@@ -1,21 +1,8 @@
 #include <SDL2/SDL_render.h>
+#include "rect.h"
 #include "buffer.h"
 #include "hl.c"
 #include "docview.h"
-
-
-static void draw_line_number(int l, SDL_Point position, SDL_Renderer *renderer, struct docview *view)
-{
-    SDL_SetRenderDrawColor(renderer, 250, 220, 200, 32);
-    if (view->doc.cursor.selection.from.line == l) {
-        SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
-    }
-
-    char buf[16];
-    snprintf(buf, 16, "%2d", l+1);
-    font_write_text(buf, (SDL_Point){position.x, position.y}, renderer, view->font);
-}
-
 
 static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
@@ -37,7 +24,7 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
         int c = s[i];
         s[i] = 0;
         int w = font_measure_text(s+orig, view->font).x;
-        SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+40+x, y, w, size.y});
+        SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x, y, w, size.y});
         s[i] = c;
         if (s[i])
             i++;
@@ -54,12 +41,8 @@ static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct do
     SDL_Point position = (SDL_Point) { viewport.x, viewport.y };
     
     for (int i = 0; i < buffer->line_count; i++) {
-        // NOTE: I might want to take average of the delta produced by write_line and 
-        draw_line_number(i, position, renderer, view); 
-
         // TODO: Handle the offset more appropriately
-        SDL_Point line_position = (SDL_Point) { position.x + 40, position.y };
-        position.y += write_line(buffer->lines[i].data, line_position, view->font, renderer);
+        position.y += write_line(buffer->lines[i].data, position, view->font, renderer);
         if (position.y > viewport.h)
             break;
     }
@@ -69,7 +52,7 @@ static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct do
 
 static SDL_Rect get_marker_rect(SDL_Rect viewport, struct buffer_marker marker, struct docview *view)
 {
-    SDL_Point viewport_pos = {viewport.x+40, viewport.y};
+    SDL_Point viewport_pos = {viewport.x, viewport.y};
     struct buffer_range range = (struct buffer_range) { {marker.line, 0}, marker };
     char *line = buffer_get_range(&view->doc.buffer, range);
     SDL_Point line_size = font_measure_text(line, view->font);
@@ -107,7 +90,7 @@ void docview_tap(bool shift, SDL_Point xy, struct docview *view)
     SDL_Rect viewport = view->viewport;
 
     SDL_Point screen = {
-        xy.x-viewport.x+view->scroll_damped.x-40,
+        xy.x-viewport.x+view->scroll_damped.x,
         xy.y-viewport.y+view->scroll_damped.y,
     };
     
@@ -131,6 +114,26 @@ void docview_tap(bool shift, SDL_Point xy, struct docview *view)
     } 
     
     docedit_set_cursor(&view->doc, shift, (struct buffer_marker){line, minl});
+}
+
+void docview_draw_lines(SDL_Rect *viewport, SDL_Renderer *renderer, struct docview *view)
+{
+    int last_line_no = view->doc.buffer.line_count;
+    char line_no_text[32];
+    snprintf(line_no_text, 32, "%d", last_line_no);
+    int max_width = font_measure_text(line_no_text, view->font).x;
+    SDL_Point position = {viewport->x, viewport->y};
+
+    SDL_SetRenderDrawColor(renderer, 250, 220, 200, 32);
+    for (int i = 0; i < last_line_no; i++) {
+        snprintf(line_no_text, 32, "%d", i+1);
+        SDL_Point size = font_measure_text(line_no_text, view->font);
+        max_width = size.x > max_width ? size.x : max_width;
+        font_write_text(line_no_text, position, renderer, view->font);
+        position.y += size.y;
+    }
+
+    rect_cut_left(viewport, max_width+font_size(view->font));
 }
 
 void docview_draw(SDL_Renderer *renderer, struct docview *view)
@@ -157,11 +160,13 @@ void docview_draw(SDL_Renderer *renderer, struct docview *view)
 
     viewport.y -= view->scroll_damped.y;
     viewport.x -= view->scroll_damped.x;
+
+    docview_draw_lines(&viewport, renderer, view);
     SDL_Point buffer_size = draw_lines(viewport, renderer, view);    
     draw_highlight(viewport, renderer, view);
 
     // Clamp scrolling to not scroll outside bounds
-    if (view->scroll.y > buffer_size.y-viewport.y-50)
+    if (view->scroll.y > buffer_size.y-viewport.y-50) 
         view->scroll.y = buffer_size.y-viewport.y-50;
     
     // HACK: adding hardcoded offset to the cursor position to align it with the line values

@@ -40,7 +40,7 @@ void draw_statusbar(struct view *view)
     SDL_Point text_size = font_measure_text(txt, font);
     SDL_Rect text_rect = { view_rect.x, view_rect.y, text_size.x, text_size.y };
     text_rect = ui_center_y(view, text_rect);
-    SDL_Point text_position = { text_rect.x + 10, text_rect.y };
+    SDL_Point text_position = { text_rect.x, text_rect.y };
 
     font_write_text(txt, text_position, renderer, font);
 }
@@ -56,7 +56,7 @@ void ui()
 {
     struct view screen, docview, statusbar;
     screen = ui_default_view(0, 0, screen_width, screen_height);
-    ui_inset(&screen, 10);
+    ui_inset(&screen, font_size(document.font));
     statusbar = ui_cut_bottom(&screen, font_measure_glyph(' ', font).y);
     docview = screen;
     document.viewport = ui_get_view_rect(&docview);
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
     // TODO: Handle this in docview instead
     buffer_deinit(&document.doc.buffer);
     document.doc.buffer = (struct buffer) { 0 };
-    
+
 
     font_deinit(font);
     SDL_DestroyRenderer(renderer);
