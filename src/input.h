@@ -7,6 +7,7 @@
 struct input_pass {
     struct docview *view;
     SDL_Window *window;
+    SDL_Renderer *renderer;
     SDL_Event *event;
     const char *filename;
     bool *running;

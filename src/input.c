@@ -1,4 +1,5 @@
 #include "input.h"
+#include "font.h"
 #include "util.h"
 
 void input_process_event(struct input_state *state, struct input_pass pass)
@@ -69,6 +70,16 @@ void input_process_event(struct input_state *state, struct input_pass pass)
                 char *s = SDL_GetClipboardText();
                 docedit_insert(editor, s);
                 SDL_free(s);
+            }
+            break;
+        case SDL_SCANCODE_MINUS:
+            if (state->ctrl) {
+                font_resize(view->font, font_size(view->font)-1, pass.renderer);
+            }
+            break;
+        case SDL_SCANCODE_EQUALS:
+            if (state->ctrl) {
+                font_resize(view->font, font_size(view->font)+1, pass.renderer);
             }
             break;
         case SDL_SCANCODE_BACKSPACE:

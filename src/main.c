@@ -16,7 +16,6 @@ const char *font_path = "data/monospace.ttf";
 struct font *font;
 bool running = true;
 bool is_file_new = false;
-int font_size = 19;
 const char *filename = "tests/main.c";
 struct input_state input_state;
 int screen_width, screen_height;
@@ -25,7 +24,7 @@ static struct input_pass get_input_pass(SDL_Event *event)
 {
     return (struct input_pass) {
         .event = event, .filename = filename, .running = &running,
-        .view = &document, .window = window
+        .view = &document, .window = window, .renderer = renderer,
     };
 }
 
@@ -36,27 +35,28 @@ void draw_statusbar(struct view *view)
     SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
     snprintf(txt, 1024, "%s %s%s%d:%d fs: %d", 
         filename, is_file_new ? "(new) " : "", document.doc.buffer.dirty ? "* " : "",
-        document.doc.cursor.selection.from.line+1, document.doc.cursor.selection.from.column+1, font_size);
+        document.doc.cursor.selection.from.line+1, document.doc.cursor.selection.from.column+1, font_size(font));
 
     SDL_Point text_size = font_measure_text(txt, font);
     SDL_Rect text_rect = { view_rect.x, view_rect.y, text_size.x, text_size.y };
     text_rect = ui_center_y(view, text_rect);
-    SDL_Point text_position = { text_rect.x, text_rect.y };
+    SDL_Point text_position = { text_rect.x + 10, text_rect.y };
 
     font_write_text(txt, text_position, renderer, font);
 }
 
 void draw_view(struct view *view)
 {
- //  SDL_Rect view_rect = ui_get_view_rect(view);
- //   SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
- //   SDL_RenderDrawRect(renderer, &view_rect);
+    // SDL_Rect view_rect = ui_get_view_rect(view);
+    // SDL_SetRenderDrawColor(renderer, 32, 26, 23, 255);
+    // SDL_RenderFillRect(renderer, &view_rect);
 }
 
 void ui()
 {
     struct view screen, docview, statusbar;
     screen = ui_default_view(0, 0, screen_width, screen_height);
+    ui_inset(&screen, 10);
     statusbar = ui_cut_bottom(&screen, font_measure_glyph(' ', font).y);
     docview = screen;
     document.viewport = ui_get_view_rect(&docview);
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
     }
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-    font = document.font = font_init(font_path, font_size, renderer);
+    font = document.font = font_init(font_path, 17, renderer);
 
     document.doc.buffer = buffer_init();
     char *file = util_read_whole_file(filename);

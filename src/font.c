@@ -2,6 +2,8 @@
 #include <SDL2/SDL_ttf.h>
 
 struct font {
+    char *path;
+    int size;
     struct font_glyph {
         SDL_Texture *texture;
         SDL_Surface *surface;
@@ -9,14 +11,31 @@ struct font {
     } glyphs[256];
 };
 
-struct font* font_init(const char *path, int size, SDL_Renderer *renderer)
+int font_size(struct font *font)
 {
-    TTF_Font *font = TTF_OpenFont(path, size);
+    return font->size;
+}
+
+static void destroy_glyphs(struct font *font)
+{
+    // HACK: Checking if it's a first initialization
+    if (font->glyphs[0].surface == NULL)
+        return;
+    for (int i = 0; i < 256; i++) {
+        SDL_DestroyTexture(font->glyphs[i].texture);
+        SDL_FreeSurface(font->glyphs[i].surface);
+    }
+}
+
+struct font* font_resize(struct font *result, int size, SDL_Renderer *renderer)
+{
+    destroy_glyphs(result);
+    result->size = size;
+    TTF_Font *font = TTF_OpenFont(result->path, size);
     TTF_SetFontHinting(font, TTF_HINTING_NORMAL);
     if (font == NULL)
         return NULL;
 
-    struct font *result = calloc(sizeof(struct font), 1);
     for (int i = 0; i < 256; i += 1) {
         SDL_Surface *text_surface = TTF_RenderGlyph32_Blended(font, i, (SDL_Color) { 255, 255, 255, 255 });
         int h, w;
@@ -33,6 +52,13 @@ struct font* font_init(const char *path, int size, SDL_Renderer *renderer)
 
     TTF_CloseFont(font);
     return result;
+}
+
+struct font* font_init(const char *path, int size, SDL_Renderer *renderer)
+{
+    struct font *result = calloc(sizeof(struct font), 1);
+    result->path = strcpy(malloc(strlen(path)+1), path);
+    return font_resize(result, size, renderer);
 }
 
 
@@ -89,9 +115,7 @@ SDL_Point font_write_text(const char *text, SDL_Point xy, SDL_Renderer *renderer
 
 void font_deinit(struct font *font)
 {
-    for (int i = 0; i < 256; i++) {
-        SDL_DestroyTexture(font->glyphs[i].texture);
-        SDL_FreeSurface(font->glyphs[i].surface);
-    }
+    destroy_glyphs(font);
+    free(font->path);
     free(font);
 }

@@ -5,6 +5,8 @@
 
 struct font;
 
+int font_size(struct font *font);
+struct font* font_resize(struct font *result, int size, SDL_Renderer *renderer);
 struct font* font_init(const char *path, int size, SDL_Renderer *renderer);
 SDL_Point font_measure_text(const char *text, struct font *font);
 SDL_Point font_measure_glyph(int glyph, struct font *font);

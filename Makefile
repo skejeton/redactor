@@ -8,11 +8,11 @@ EXECUTABLE = ./a.out
 all: $(SOURCES) $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	clang $(LDFLAGS) $(OBJECTS) -o $@
+	clang -lasan $(LDFLAGS) $(OBJECTS) -o $@
 
 # NOTE: This rebuilds the entire project when header is changed!
 %.o: %.c $(HEADERS)
-	cc -c $< -o $@
+	cc $(OPTFLAGS) -c $< -o $@
 
 run: all
 	./a.out
