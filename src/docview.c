@@ -88,13 +88,13 @@ static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
 void docview_tap(bool shift, SDL_Point xy, struct docview *view)
 {
     SDL_Rect viewport = view->viewport;
+    rect_cut_left(&viewport, view->line_column_viewport.w);
 
     SDL_Point screen = {
         xy.x-viewport.x+view->scroll_damped.x,
         xy.y-viewport.y+view->scroll_damped.y,
     };
     
-    // FIXME: This assumes a monospace font!!!!!
     SDL_Point glyph_size = font_measure_glyph(' ', view->font);
     int line = screen.y/glyph_size.y;
     // Normalize line 
@@ -133,7 +133,7 @@ void docview_draw_lines(SDL_Rect *viewport, SDL_Renderer *renderer, struct docvi
         position.y += size.y;
     }
 
-    rect_cut_left(viewport, max_width+font_size(view->font));
+    view->line_column_viewport = rect_cut_left(viewport, max_width+font_size(view->font));
 }
 
 void docview_draw(SDL_Renderer *renderer, struct docview *view)

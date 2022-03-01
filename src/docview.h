@@ -6,6 +6,7 @@
 
 struct docview {
     SDL_Rect viewport;
+    SDL_Rect line_column_viewport;
     struct font *font;
     struct docedit doc;
     float blink;
