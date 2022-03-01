@@ -143,6 +143,7 @@ int main(int argc, char *argv[]) {
     // TODO: Handle this in docview instead
     buffer_deinit(&document.doc.buffer);
     document.doc.buffer = (struct buffer) { 0 };
+    
 
     font_deinit(font);
     SDL_DestroyRenderer(renderer);

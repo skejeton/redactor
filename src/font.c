@@ -19,7 +19,7 @@ int font_size(struct font *font)
 static void destroy_glyphs(struct font *font)
 {
     // HACK: Checking if it's a first initialization
-    if (font->glyphs[0].surface == NULL)
+    if (font->glyphs[' '].surface == NULL)
         return;
     for (int i = 0; i < 256; i++) {
         SDL_DestroyTexture(font->glyphs[i].texture);
