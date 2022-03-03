@@ -221,11 +221,12 @@ void input_process_event(struct input_state *state, struct input_pass pass)
             break;
         case SDL_SCANCODE_RETURN: {
             int spaces = match_open_close_pairs(&editor->buffer, (struct buffer_range) {{0}, editor->cursor.selection.to}, "({[", ")}]") * 4;
-            int persistspaces = persistspaces = calculate_tabulation_spaces(editor);
-            if (persistspaces > get_cursor_position(editor).column)
-                persistspaces = get_cursor_position(editor).column;
-            if (persistspaces > spaces)
+            int persistspaces = calculate_tabulation_spaces(editor);
+            if (persistspaces >= spaces) {
+                if (persistspaces > get_cursor_position(editor).column)
+                    persistspaces = get_cursor_position(editor).column;
                 spaces += persistspaces-spaces;
+            }
            docedit_insert(editor, "\n");
             while (spaces--)
                 docedit_insert(editor, " ");
