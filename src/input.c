@@ -17,7 +17,6 @@ static bool is_selecting(struct docedit *editor)
     return !buffer_range_empty(editor->cursor.selection);
 }
 
-
 static struct buffer_marker get_cursor_position(struct docedit *editor)
 {
     return editor->cursor.selection.to;
@@ -164,9 +163,12 @@ void input_process_event(struct input_state *state, struct input_pass pass)
         case SDL_SCANCODE_RIGHT:
             docedit_move_cursor(editor, state->shift, 1, 0);
             break;
-        case SDL_SCANCODE_RETURN:
+        case SDL_SCANCODE_RETURN: {
+            int spaces = calculate_tabulation_spaces(editor);
             docedit_insert(editor, "\n");
-            break;
+            while (spaces--)
+                docedit_insert(editor, " ");
+        } break;
         case SDL_SCANCODE_TAB:
             for (int i = 0, col = editor->cursor.selection.from.column; i < (4 - col % 4); i++)
                 docedit_insert(editor, " ");
