@@ -1,5 +1,4 @@
 Add control movements, that will stride by a word
-Erase tabulations immediately not every space one by one
 Fix cursor staying in the wrong "remember" position after write (or don't?)
 Put indentations after a brace
 Highlight include path as a string

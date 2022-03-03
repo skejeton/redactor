@@ -31,6 +31,22 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
         x = 0;
         y += size.y;
     }
+
+    // Draw dots on spaces
+    y = viewport.y+marker.line*size.y;
+    x = size.x;
+    for (int i = 0; s[i]; i++) {
+        SDL_Point size = font_measure_glyph(s[i], view->font);
+        if (s[i] == ' ') {
+            SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x+size.x/2-1, y+size.y/2-1, 2, 2});
+        }
+        if (s[i] == '\n') {
+            y += size.y;
+            x = 0;
+        } else {
+            x += size.x;
+        }
+    }
     free(s);
 }
 

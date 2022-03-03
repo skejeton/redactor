@@ -17,6 +17,41 @@ static bool is_selecting(struct docedit *editor)
     return !buffer_range_empty(editor->cursor.selection);
 }
 
+static int strchrdx(const char *s, int c)
+{
+    char *f = strchr(s, c);
+    return f ? f - s : -1;
+}
+
+static int match_open_close_pairs(struct buffer *buffer, struct buffer_range range, const char *open, const char *closing)
+{   
+    if (strlen(open) != strlen(closing)) {
+        fprintf(stderr, "Internal error: Open close pair length mismatch\n");
+        return 0;
+    }
+
+    char stack[1024];
+    int stack_size = 0;
+
+    // TODO: Consider using a slower but memory efficent version, or a chunked one
+    char *b = buffer_get_range(buffer, range);
+    for (int i = 0; b[i]; i++) {
+        if (strchr(open, b[i]) && stack_size < 1024) {
+            stack[stack_size++] = b[i];
+        } else if (strchr(closing, b[i]) && stack_size > 0) {
+            char open_char = stack[stack_size-1];
+            if (strchrdx(closing, b[i]) == strchrdx(open, open_char)) {
+                --stack_size;
+            } else {
+                // Backtrack until matching is found, or empty
+                while (strchrdx(open, stack[stack_size-1]) != strchrdx(closing, b[i]) && --stack_size > 0)
+                    ;
+            }
+        }
+    }
+    return stack_size;
+}
+
 static struct buffer_marker get_cursor_position(struct docedit *editor)
 {
     return editor->cursor.selection.to;
@@ -40,6 +75,18 @@ static int calculate_tabulation_spaces(struct docedit *editor)
     }
 
     return at.column;
+}
+
+static bool is_cursor_below_content(struct docedit *editor)
+{
+    if (!is_selecting(editor)) {
+        struct buffer_marker at = get_cursor_position(editor);
+        int spaces = calculate_tabulation_spaces(editor);
+
+        if (at.column > spaces || at.column == 0)
+            return false;
+    }
+    return true;
 }
 
 static bool erase_tabulation(struct docedit *editor)
@@ -83,6 +130,9 @@ void input_process_event(struct input_state *state, struct input_pass pass)
     switch (event->type) {
     case SDL_TEXTINPUT: {
         if (!state->ctrl) {
+            if (is_cursor_below_content(editor) && strchr(")}]", event->text.text[0])) {
+                erase_tabulation(editor);
+            }
             docedit_insert(editor, event->text.text);
         }
     } break;
@@ -170,7 +220,9 @@ void input_process_event(struct input_state *state, struct input_pass pass)
             docedit_move_cursor(editor, state->shift, 1, 0);
             break;
         case SDL_SCANCODE_RETURN: {
-            int spaces = calculate_tabulation_spaces(editor);
+            int spaces = match_open_close_pairs(&editor->buffer, (struct buffer_range) {{0}, editor->cursor.selection.to}, "({[", ")}]") * 4;
+            if (calculate_tabulation_spaces(editor) > spaces)
+                spaces += calculate_tabulation_spaces(editor)-spaces;
             docedit_insert(editor, "\n");
             while (spaces--)
                 docedit_insert(editor, " ");
