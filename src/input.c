@@ -31,25 +31,31 @@ static struct buffer_marker get_beneath_cursor_position(struct docedit *editor)
 
 static int calculate_tabulation_spaces(struct docedit *editor)
 {
-    struct buffer_marker at = get_beneath_cursor_position(editor);
-    int spaces = 0, c;
+    struct buffer_marker at = get_cursor_position(editor);
+    // Count from the start up until a non space character
+    at.column = 0;
+    int c;
     while ((c = buffer_get_char(&editor->buffer, at)) == ' ') {
-        spaces++;
-        at.column--;
+        at.column++;
     }
 
-    return !c ? spaces : 0;
+    return at.column;
 }
 
 static bool erase_tabulation(struct docedit *editor)
 {
     if (!is_selecting(editor)) {
 
+        struct buffer_marker at = get_cursor_position(editor);
         int spaces = calculate_tabulation_spaces(editor);
+        // Ignore if there was a non space character previously
+        if (at.column > spaces || at.column == 0)
+            return 0;
+
+
         if (spaces > 4)
             spaces = 4;
 
-        struct buffer_marker at = get_cursor_position(editor);
         // Adjust column to nearest 4th
         at.column -= (at.column - spaces + 3) % 4 + 1;
 
