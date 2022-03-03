@@ -66,11 +66,11 @@ static SDL_Rect get_marker_rect(SDL_Rect viewport, struct buffer_marker marker, 
 
 static void draw_cursor(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
-    SDL_Rect cursor_rect = get_marker_rect(viewport, view->doc.cursor.selection.from, view);
-    SDL_Rect cursor2_rect = get_marker_rect(viewport, view->doc.cursor.selection.to, view);
-    SDL_SetRenderDrawColor(renderer, 0, 150, 220, 255.0*(cos(view->blink*8)/2+0.5));
-    SDL_RenderFillRect(renderer, &cursor2_rect);
+    SDL_Rect cursor_rect = get_marker_rect(viewport, view->doc.cursor.selection.to, view);
+    SDL_Rect cursor2_rect = get_marker_rect(viewport, view->doc.cursor.selection.from, view);
     SDL_SetRenderDrawColor(renderer, 220, 150, 0, 255.0*(cos(view->blink*8)/2+0.5));
+    SDL_RenderFillRect(renderer, &cursor2_rect);
+    SDL_SetRenderDrawColor(renderer, 0, 150, 220, 255.0*(cos(view->blink*8)/2+0.5));
     SDL_RenderFillRect(renderer, &cursor_rect);
 }
 
@@ -80,7 +80,7 @@ static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
     viewport.x += view->line_column_viewport.w;
     viewport.w -= view->line_column_viewport.w;
 
-    SDL_Rect cursor_rect = get_marker_rect(viewport, view->doc.cursor.selection.from, view);
+    SDL_Rect cursor_rect = get_marker_rect(viewport, view->doc.cursor.selection.to, view);
     cursor_rect.y -= viewport.y;
     if (cursor_rect.y > (view->scroll.y+viewport.h-cursor_rect.h))
         view->scroll.y = cursor_rect.y+cursor_rect.h-viewport.h;
@@ -149,8 +149,8 @@ void docview_draw_lines(SDL_Rect *viewport, SDL_Renderer *renderer, struct docvi
 void docview_draw(SDL_Renderer *renderer, struct docview *view)
 {
     SDL_Rect viewport = view->viewport;
-    if (view->doc.cursor.selection.from.line != view->prev_cursor_pos.line ||
-        view->doc.cursor.selection.from.column != view->prev_cursor_pos.column) {
+    if (view->doc.cursor.selection.to.line != view->prev_cursor_pos.line ||
+        view->doc.cursor.selection.to.column != view->prev_cursor_pos.column) {
         // Reset cursor blink after a movement
         view->blink = 0;
         focus_on_cursor(viewport, view);
@@ -160,7 +160,7 @@ void docview_draw(SDL_Renderer *renderer, struct docview *view)
     view->blink += 0.016;
 
         
-    view->prev_cursor_pos = view->doc.cursor.selection.from;
+    view->prev_cursor_pos = view->doc.cursor.selection.to;
     
 
     if (view->scroll.x < 0) 

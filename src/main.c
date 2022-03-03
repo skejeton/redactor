@@ -35,7 +35,7 @@ void draw_statusbar(struct view *view)
     SDL_SetRenderDrawColor(renderer, 250, 220, 200, 128);
     snprintf(txt, 1024, "%s %s%s%d:%d fs: %d", 
         filename, is_file_new ? "(new) " : "", document.doc.buffer.dirty ? "* " : "",
-        document.doc.cursor.selection.from.line+1, document.doc.cursor.selection.from.column+1, font_size(font));
+        document.doc.cursor.selection.to.line+1, document.doc.cursor.selection.to.column+1, font_size(font));
 
     SDL_Point text_size = font_measure_text(txt, font);
     SDL_Rect text_rect = { view_rect.x, view_rect.y, text_size.x, text_size.y };

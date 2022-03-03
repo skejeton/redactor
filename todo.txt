@@ -20,4 +20,6 @@ Use `to` as the cursor not `from`
 Double tap to select a word
 Triple tap to select the whole line
 Handle unsuccessful file write
-CTRL+Alt+C and other operations that will copy content in parentheses enclosed near cursor 
+CTRL+Alt+C and other operations that will copy content in parentheses enclosed near cursor
+Handle vertical scrolling with account to non monospace fonts
+Add lil braces around cursors when you are selecting
