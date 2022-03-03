@@ -16,7 +16,7 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
     s = buffer_get_range(&view->doc.buffer, view->doc.cursor.selection);
 
     // TODO handle variable length
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 16);
+    SDL_SetRenderDrawColor(renderer, 255, 240, 230, 16);
     for (int i = 0; s[i];) {
         int orig = i;
         while (s[i] && s[i] != '\n')
@@ -24,6 +24,8 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
         int c = s[i];
         s[i] = 0;
         int w = font_measure_text(s+orig, view->font).x;
+        if (c == '\n')
+            w += font_measure_glyph(' ', view->font).x;
         SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x, y, w, size.y});
         s[i] = c;
         if (s[i])
@@ -38,7 +40,8 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
     for (int i = 0; s[i]; i++) {
         SDL_Point size = font_measure_glyph(s[i], view->font);
         if (s[i] == ' ') {
-            SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x+size.x/2-1, y+size.y/2-1, 2, 2});
+            int dot_size = font_size(view->font)/8;
+            SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x+size.x/2-dot_size/2, y+size.y/2-dot_size/2, dot_size, dot_size});
         }
         if (s[i] == '\n') {
             y += size.y;
@@ -178,7 +181,6 @@ void docview_draw(SDL_Renderer *renderer, struct docview *view)
         
     view->prev_cursor_pos = view->doc.cursor.selection.to;
     
-
     if (view->scroll.x < 0) 
         view->scroll.x = 0;
     if (view->scroll.y < 0) 
@@ -187,12 +189,11 @@ void docview_draw(SDL_Renderer *renderer, struct docview *view)
     view->scroll_damped.x += (view->scroll.x-view->scroll_damped.x)/5;
     view->scroll_damped.y += (view->scroll.y-view->scroll_damped.y)/5;
 
+    SDL_RenderSetClipRect(renderer, &viewport);
     viewport.y -= view->scroll_damped.y;
 
     docview_draw_lines(&viewport, renderer, view);
-    viewport.y += view->scroll_damped.y;
     SDL_RenderSetClipRect(renderer, &viewport);
-    viewport.y -= view->scroll_damped.y;
     viewport.x -= view->scroll_damped.x;
     SDL_Point buffer_size = draw_lines(viewport, renderer, view);    
     draw_highlight(viewport, renderer, view);
