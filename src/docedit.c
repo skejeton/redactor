@@ -33,10 +33,9 @@ void docedit_move_cursor(struct docedit *docedit, bool select, int hor, int ver)
 
 void docedit_erase(struct docedit *docedit)
 {
-    if (docedit->cursor.selection.to.line == docedit->cursor.selection.from.line &&
-        docedit->cursor.selection.to.column == docedit->cursor.selection.from.column) {
-            docedit->cursor.selection.from = buffer_move_marker(&docedit->buffer, docedit->cursor.selection.from, -1, 0);
-        }
+    if (buffer_range_empty(docedit->cursor.selection)) {
+        docedit->cursor.selection.from = buffer_move_marker(&docedit->buffer, docedit->cursor.selection.from, -1, 0);
+    }
     
     docedit->cursor.selection.from = docedit->cursor.selection.to = buffer_remove(&docedit->buffer, docedit->cursor.selection);
 }

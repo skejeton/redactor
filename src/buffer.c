@@ -76,10 +76,6 @@ static struct buffer_range swap_ranges(struct buffer_range range)
     return range;
 }
 
-struct buffer_range buffer_swap_ranges(struct buffer_range range) {
-    return swap_ranges(range);
-}
-
 static struct buffer_range sanitize_range(struct buffer *buffer, struct buffer_range range)
 {
     range.from = sanitize_marker(buffer, range.from);
@@ -87,6 +83,31 @@ static struct buffer_range sanitize_range(struct buffer *buffer, struct buffer_r
     
     range = swap_ranges(range);
     return range;
+}
+
+struct buffer_range buffer_sanitize_range(struct buffer *buffer, struct buffer_range range)
+{
+    return sanitize_range(buffer, range);
+}
+
+struct buffer_marker buffer_sanitize_marker(struct buffer *buffer, struct buffer_marker marker)
+{
+    return sanitize_marker(buffer, marker);
+}
+
+struct buffer_range buffer_swap_ranges(struct buffer_range range) 
+{
+    return swap_ranges(range);
+}
+
+bool buffer_markers_equal(struct buffer_marker a, struct buffer_marker b)
+{
+    return a.line == b.line && a.column == b.column;
+}
+
+bool buffer_range_empty(struct buffer_range range)
+{
+    return buffer_markers_equal(range.from, range.to);
 }
 
 static void erase_from_line(struct buffer_line *line, int from, int to)
@@ -186,6 +207,19 @@ char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
     return buf;
 }
 
+int buffer_get_char(struct buffer *buffer, struct buffer_marker at)
+{
+    if (at.line < 0)
+        return 0;
+    if (at.line >= buffer->line_count)
+        return 0;
+    if (at.column < 0)
+        return 0;
+    if (at.column > buffer->lines[at.line].size)
+        return 0;
+
+    return buffer->lines[at.line].data[at.column];
+}
 
 struct buffer buffer_init() 
 {

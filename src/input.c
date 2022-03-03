@@ -12,6 +12,58 @@ static void change_document_font_size(struct docview *view, int delta, SDL_Rende
     font_resize(view->font, size, renderer);
 }
 
+static bool is_selecting(struct docedit *editor)
+{
+    return !buffer_range_empty(editor->cursor.selection);
+}
+
+
+static struct buffer_marker get_cursor_position(struct docedit *editor)
+{
+    return editor->cursor.selection.to;
+}
+
+static struct buffer_marker get_beneath_cursor_position(struct docedit *editor)
+{
+    struct buffer_marker marker = editor->cursor.selection.to;
+    marker.column -= 1; // This makes that the cursor points to the character it's beneath
+    return marker;
+}
+
+static int calculate_tabulation_spaces(struct docedit *editor)
+{
+    struct buffer_marker at = get_beneath_cursor_position(editor);
+    int spaces = 0, c;
+    while ((c = buffer_get_char(&editor->buffer, at)) == ' ') {
+        spaces++;
+        at.column--;
+    }
+
+    return !c ? spaces : 0;
+}
+
+static bool erase_tabulation(struct docedit *editor)
+{
+    if (!is_selecting(editor)) {
+
+        int spaces = calculate_tabulation_spaces(editor);
+        if (spaces > 4)
+            spaces = 4;
+
+        struct buffer_marker at = get_cursor_position(editor);
+        // Adjust column to nearest 4th
+        at.column -= (at.column - spaces + 3) % 4 + 1;
+
+        if (spaces > 0) {
+            // Set the selection and erase the text
+            editor->cursor.selection.from = at;
+            docedit_erase(editor);
+        }
+        return spaces;
+    }
+    return 0;
+}
+
 void input_process_event(struct input_state *state, struct input_pass pass)
 {
     struct docedit *editor = &pass.view->doc;
@@ -97,7 +149,8 @@ void input_process_event(struct input_state *state, struct input_pass pass)
             }
             break;
         case SDL_SCANCODE_BACKSPACE:
-            docedit_erase(editor);
+            if (!erase_tabulation(editor))
+                docedit_erase(editor);
             break;
         case SDL_SCANCODE_UP:
             docedit_move_cursor(editor, state->shift, 0, -1);
