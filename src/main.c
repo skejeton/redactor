@@ -16,7 +16,7 @@ const char *font_path = "data/monospace.ttf";
 struct font *font;
 bool running = true;
 bool is_file_new = false;
-const char *filename = "tests/main.c";
+const char *filename = "tests/specimen/main.c";
 struct input_state input_state;
 int screen_width, screen_height;
 

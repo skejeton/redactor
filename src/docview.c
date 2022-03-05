@@ -62,7 +62,7 @@ static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct do
     for (int i = 0; i < buffer->line_count; i++) {
         // TODO: Handle the offset more appropriately
         position.y += write_line(buffer->lines[i].data, position, view->font, renderer);
-        if (position.y > viewport.h)
+        if (position.y > viewport.h+view->viewport.y)
             break;
     }
     return position;
@@ -193,7 +193,9 @@ void docview_draw(SDL_Renderer *renderer, struct docview *view)
     viewport.y -= view->scroll_damped.y;
 
     docview_draw_lines(&viewport, renderer, view);
+    viewport.y += view->scroll_damped.y;
     SDL_RenderSetClipRect(renderer, &viewport);
+    viewport.y -= view->scroll_damped.y;
     viewport.x -= view->scroll_damped.x;
     SDL_Point buffer_size = draw_lines(viewport, renderer, view);    
     draw_highlight(viewport, renderer, view);
