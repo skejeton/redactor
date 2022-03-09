@@ -12,7 +12,7 @@ Highlight brace pairs
 Show errors for unclosed braces !!AND IGNORE ONES IN STRINGS/CHARS/COMMENTS!!
 Smooth cursor movement
 Make Shift+Enter insert a new line before the one you're on
-Fix high cpu usage <-- Implement font atlas
+Fix high cpu usage <-- Implement render cache
 Make shift+tab append a tab at the beginning
 Extracting position/size SDL_Point from SDL_Rect
 Use `to` as the cursor not `from`
@@ -25,3 +25,5 @@ Add lil braces around cursors when you are selecting
 Fix double indent for double wrapped parentheses
 Wrap braces to next line when you press newline near closing brace
 Investigate crashes with zero width/height
+Font fallbacks 
+

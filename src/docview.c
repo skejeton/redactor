@@ -1,5 +1,6 @@
 #include <SDL2/SDL_render.h>
 #include "rect.h"
+#include "utf8.h"
 #include "buffer.h"
 #include "hl.h"
 #include "docview.h"
@@ -133,14 +134,20 @@ void docview_tap(bool shift, SDL_Point xy, struct docview *view)
     int mind = 100000;
     int minl = view->doc.buffer.lines[line].size;
     
-    for (int i = 0; i <= view->doc.buffer.lines[line].size; ++i) {
+    const char *linetext = view->doc.buffer.lines[line].data;
+    int linesiz = view->doc.buffer.lines[line].size;
+    int i, c;
+    for (i = 0; (c = utf8_get(&linetext, &linesiz)); ++i) {
         if (abs(w - screen.x) < mind) {
             mind = abs(w - screen.x);
             minl = i;
         }
-        if (i < view->doc.buffer.lines[line].size)
-            w += font_measure_glyph(view->font, view->doc.buffer.lines[line].data[i]).x;
+        w += font_measure_glyph(view->font, c).x;
     } 
+    if (abs(w - screen.x) < mind) {
+        mind = abs(w - screen.x);
+        minl = i;
+    }
     
     docedit_set_cursor(&view->doc, shift, (struct buffer_marker){line, minl});
 }

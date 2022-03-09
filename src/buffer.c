@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "buffer.h"
+#include "utf8.h"
 
 #define LINE_REALLOC_PERIOD 1024
 #define LINES_REALLOC_PERIOD 32
@@ -49,6 +50,14 @@ static void line_write_at(struct buffer_line *line, int at, const char *s)
         line_put_at(line, at++, *s++);
 }
 
+static int utf8_strlen(const char *l) 
+{
+    int len = strlen(l);
+    int ulen = 0;
+    while (utf8_get(&l, &len))
+        ulen++;
+    return ulen;
+}
 
 static struct buffer_marker sanitize_marker(struct buffer *buffer, struct buffer_marker marker)
 {
@@ -56,10 +65,13 @@ static struct buffer_marker sanitize_marker(struct buffer *buffer, struct buffer
         marker.line = 0;
     else if (marker.line >= buffer->line_count)
         marker.line = buffer->line_count-1;
+
+    int ulen = utf8_strlen(buffer->lines[marker.line].data);
+
     if (marker.column < 0)
         marker.column = 0;
-    else if (marker.column > buffer->lines[marker.line].size)
-        marker.column = buffer->lines[marker.line].size;
+    else if (marker.column > ulen)
+        marker.column = ulen;
     return marker;
 }
 
@@ -82,6 +94,27 @@ static struct buffer_range sanitize_range(struct buffer *buffer, struct buffer_r
     range.to = sanitize_marker(buffer, range.to);
     
     range = swap_ranges(range);
+    return range;
+}
+
+static struct buffer_marker utify_marker(struct buffer *buffer, struct buffer_marker marker)
+{
+    const char *line = buffer->lines[marker.line].data;
+    const char *line_original = line;
+    int max = buffer->lines[marker.line].size;
+
+    while (marker.column-- && utf8_get(&line, &max)) 
+        ;
+
+    marker.column = line - line_original;
+    return marker;
+}
+
+// Gives correct offsets from UTF-8 text
+static struct buffer_range utify_range(struct buffer *buffer, struct buffer_range range)
+{
+    range.from = utify_marker(buffer, range.from);
+    range.to   = utify_marker(buffer, range.to);
     return range;
 }
 
@@ -120,7 +153,8 @@ static void erase_from_line(struct buffer_line *line, int from, int to)
 struct buffer_marker buffer_remove(struct buffer *buffer, struct buffer_range range)
 {
     buffer->dirty = true;
-    range = sanitize_range(buffer, range);
+    struct buffer_range return_range = sanitize_range(buffer, range);
+    range = utify_range(buffer, return_range);
     if (range.from.line == range.to.line) {
         erase_from_line(&buffer->lines[range.from.line], range.from.column, range.to.column);
     } else {
@@ -132,15 +166,16 @@ struct buffer_marker buffer_remove(struct buffer *buffer, struct buffer_range ra
             remove_line(buffer, range.from.line+1);
         } 
     }
-    return range.from;
+    return return_range.from;
 }
 
 // FIXME: SLOW!
 struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker marker, const char *text)
 {
     buffer->dirty = true;
-    marker = sanitize_marker(buffer, marker);
-    
+    struct buffer_marker test_marker = sanitize_marker(buffer, marker);
+    marker = utify_marker(buffer, test_marker);
+    int sl = utf8_strlen(text);
     char c;
     while ((c = *text++)) {
         if (c == '\n') {
@@ -151,12 +186,17 @@ struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker m
             buffer->lines[pl].data[marker.column] = 0;
             buffer->lines[pl].size = marker.column;
             marker.column = 0;
+            sl = utf8_strlen(text);
         }
         else {
             line_put_at(&buffer->lines[marker.line], marker.column++, c);
         }
     }
     
+    if (test_marker.line == marker.line)
+        marker.column = test_marker.column+sl;
+    else 
+        marker.column = sl;
     return marker;
 }
 
@@ -179,7 +219,9 @@ char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
 {
     range = swap_ranges(range);
     int origcol = range.to.column;
-    range = sanitize_range(buffer, range);
+
+    range = utify_range(buffer, sanitize_range(buffer, range));
+    // TODO: This will overestimate the result due to unicodifying, fix that
     int nl = origcol > buffer->lines[range.to.line].size;
     int range_len = range_length(buffer, range);
     int buf_len = range_len+(range.to.line-range.from.line)+2;
@@ -217,7 +259,7 @@ int buffer_get_char(struct buffer *buffer, struct buffer_marker at)
         return 0;
     if (at.column > buffer->lines[at.line].size)
         return 0;
-
+    at = utify_marker(buffer, at);
     return buffer->lines[at.line].data[at.column];
 }
 
