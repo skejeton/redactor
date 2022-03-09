@@ -122,7 +122,7 @@ static int write_line(const char *text, SDL_Point xy, struct font *font, SDL_Ren
     int h = 0, w = 0;
     SDL_SetRenderDrawColor(renderer, 250, 220, 200, 16);
     
-    SDL_Point space_glyph_size = font_measure_glyph(' ', font);
+    SDL_Point space_glyph_size = font_measure_glyph(font, ' ');
 
     for (int i = 0;*text == ' ';i++,text++) {
         h = space_glyph_size.y;
@@ -160,18 +160,18 @@ static int write_line(const char *text, SDL_Point xy, struct font *font, SDL_Ren
 
         SDL_SetRenderDrawColor(renderer, 250, 220, 200, 255);
         snprintf(tail, 1024, "%.*s", (int)(text-prevend), prevend);
-        w += font_write_text(tail, (SDL_Point){xy.x+w, xy.y}, renderer, font).x;
+        w += font_write_text(font, tail, (SDL_Point){xy.x+w, xy.y}, renderer).x;
 
         SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
         snprintf(tail, 1024, "%.*s", (int)(text-prevend), prevend);
         snprintf(tail, 1024, "%.*s", (int)(end-text), text);
-        w += font_write_text(tail, (SDL_Point){xy.x+w, xy.y}, renderer, font).x;
+        w += font_write_text(font, tail, (SDL_Point){xy.x+w, xy.y}, renderer).x;
 
         text = end;
 
     }
     SDL_SetRenderDrawColor(renderer, 250, 220, 200, 255);
-    h = font_write_text(end, (SDL_Point){xy.x+w, xy.y}, renderer, font).y;
+    h = font_write_text(font, end, (SDL_Point){xy.x+w, xy.y}, renderer).y;
     return h;
 }
 

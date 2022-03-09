@@ -24,3 +24,4 @@ Handle vertical scrolling with account to non monospace fonts
 Add lil braces around cursors when you are selecting
 Fix double indent for double wrapped parentheses
 Wrap braces to next line when you press newline near closing brace
+Investigate crashes with zero width/height

@@ -1,7 +1,7 @@
 #include <SDL2/SDL_render.h>
 #include "rect.h"
 #include "buffer.h"
-#include "hl.c"
+#include "hl.h"
 #include "docview.h"
 
 static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
@@ -9,7 +9,7 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
     struct buffer_marker marker = buffer_swap_ranges(view->doc.cursor.selection).from;
     struct buffer_range range = (struct buffer_range) { {marker.line, 0}, marker };
     char *s = buffer_get_range(&view->doc.buffer, range);
-    SDL_Point size = font_measure_text(s, view->font);
+    SDL_Point size = font_measure_text(view->font, s);
     free(s);
     int x = size.x;
     int y = viewport.y+marker.line*size.y;
@@ -23,9 +23,9 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
             i++;
         int c = s[i];
         s[i] = 0;
-        int w = font_measure_text(s+orig, view->font).x;
+        int w = font_measure_text(view->font, s+orig).x;
         if (c == '\n')
-            w += font_measure_glyph(' ', view->font).x;
+            w += font_measure_glyph(view->font, ' ').x;
         SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x, y, w, size.y});
         s[i] = c;
         if (s[i])
@@ -38,7 +38,7 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
     y = viewport.y+marker.line*size.y;
     x = size.x;
     for (int i = 0; s[i]; i++) {
-        SDL_Point size = font_measure_glyph(s[i], view->font);
+        SDL_Point size = font_measure_glyph(view->font, s[i]);
         if (s[i] == ' ') {
             int dot_size = font_size(view->font)/8;
             SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x+size.x/2-dot_size/2, y+size.y/2-dot_size/2, dot_size, dot_size});
@@ -74,7 +74,7 @@ static SDL_Rect get_marker_rect(SDL_Rect viewport, struct buffer_marker marker, 
     SDL_Point viewport_pos = {viewport.x, viewport.y};
     struct buffer_range range = (struct buffer_range) { {marker.line, 0}, marker };
     char *line = buffer_get_range(&view->doc.buffer, range);
-    SDL_Point line_size = font_measure_text(line, view->font);
+    SDL_Point line_size = font_measure_text(view->font, line);
     free(line);
     int at_line = range.from.line;
     SDL_Point cursor_position = { viewport_pos.x + line_size.x, viewport_pos.y + line_size.y * at_line };
@@ -105,7 +105,7 @@ static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
         view->scroll.y = cursor_rect.y+cursor_rect.h-viewport.h;
     if (cursor_rect.y < viewport.y+view->scroll.y)
         view->scroll.y = cursor_rect.y;
-    int charw = font_measure_glyph(' ', view->font).x;
+    int charw = font_measure_glyph(view->font, ' ').x;
 
     cursor_rect.x -= viewport.x-charw;
     if (cursor_rect.x > (view->scroll.x+viewport.w-cursor_rect.w))
@@ -124,7 +124,7 @@ void docview_tap(bool shift, SDL_Point xy, struct docview *view)
         xy.y-viewport.y+view->scroll_damped.y,
     };
     
-    SDL_Point glyph_size = font_measure_glyph(' ', view->font);
+    SDL_Point glyph_size = font_measure_glyph(view->font, ' ');
     int line = screen.y/glyph_size.y;
     // Normalize line 
     line = buffer_move_marker(&view->doc.buffer, (struct buffer_marker){line}, 0, 0).line;
@@ -139,7 +139,7 @@ void docview_tap(bool shift, SDL_Point xy, struct docview *view)
             minl = i;
         }
         if (i < view->doc.buffer.lines[line].size)
-            w += font_measure_glyph(view->doc.buffer.lines[line].data[i], view->font).x;
+            w += font_measure_glyph(view->font, view->doc.buffer.lines[line].data[i]).x;
     } 
     
     docedit_set_cursor(&view->doc, shift, (struct buffer_marker){line, minl});
@@ -150,15 +150,15 @@ void docview_draw_lines(SDL_Rect *viewport, SDL_Renderer *renderer, struct docvi
     int last_line_no = view->doc.buffer.line_count;
     char line_no_text[32];
     snprintf(line_no_text, 32, "%d", last_line_no);
-    int max_width = font_measure_text(line_no_text, view->font).x;
+    int max_width = font_measure_text(view->font, line_no_text).x;
     SDL_Point position = {viewport->x, viewport->y};
     SDL_SetRenderDrawColor(renderer, 32, 26, 23, 255);
     SDL_SetRenderDrawColor(renderer, 250, 220, 200, 32);
     for (int i = 0; i < last_line_no; i++) {
         snprintf(line_no_text, 32, "%d", i+1);
-        SDL_Point size = font_measure_text(line_no_text, view->font);
+        SDL_Point size = font_measure_text(view->font, line_no_text);
         max_width = size.x > max_width ? size.x : max_width;
-        font_write_text(line_no_text, position, renderer, view->font);
+        font_write_text(view->font, line_no_text, position, renderer);
         position.y += size.y;
     }
 

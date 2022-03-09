@@ -180,7 +180,7 @@ char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
     range = swap_ranges(range);
     int origcol = range.to.column;
     range = sanitize_range(buffer, range);
-    int nl = origcol > buffer->lines[range.from.line].size;
+    int nl = origcol > buffer->lines[range.to.line].size;
     int range_len = range_length(buffer, range);
     int buf_len = range_len+(range.to.line-range.from.line)+2;
     char *buf = malloc(buf_len);
