@@ -92,7 +92,6 @@ static struct glyphmetrics construct_glyph_metrics_(TTF_Font *font, int glyphNo)
 
     result.miny = 0; 
     result.maxy = TTF_FontHeight(font);
-    printf("metrics '%c' %d %d %d %d\n", glyphNo, result.minx, result.miny, result.maxx, result.maxy);
     return result;
 }
 

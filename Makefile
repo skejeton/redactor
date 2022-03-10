@@ -5,8 +5,8 @@ TEST_HEADERS = $(shell echo src/*.h) $(shell echo tests/*.h)
 OBJECTS = $(FILES:.c=.o)
 TEST_OBJECTS = $(TEST_FILES:.c=.o) 
 LDFLAGS = -lSDL2 -lSDL2_ttf -lm -lc
-OPTFLAGS = -O3 #-fsanitize=address
-ASAN = #-lasan
+OPTFLAGS = -g -fsanitize=address
+ASAN = -lasan
 EXECUTABLE = ./bin/a.out
 TEST_EXECUTABLE = ./bin/test
 

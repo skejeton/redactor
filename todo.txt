@@ -5,7 +5,6 @@ Highlight include path as a string
 Highlight define value as general syntax?
 Make a command line that darkens the code content and lets you open files, etc
 Watch for file changes
-Allow for non ascii characters (at least basic like Cyrillic, Spanish, e.t.c)
 Handle escape sequences in a string (highlighting)
 Do syntax highlighting based on the file type
 Highlight brace pairs
@@ -26,4 +25,5 @@ Fix double indent for double wrapped parentheses
 Wrap braces to next line when you press newline near closing brace
 Investigate crashes with zero width/height
 Font fallbacks 
-
+Handle tab symbol rendering
+Use tabs in makefiles

@@ -29,10 +29,10 @@ static int match_open_close_pairs(struct buffer *buffer, struct buffer_range ran
         fprintf(stderr, "Internal error: Open close pair length mismatch\n");
         return 0;
     }
-
+    
     char stack[1024];
     int stack_size = 0;
-
+    
     // TODO: Consider using a slower but memory efficent version, or a chunked one
     char *b = buffer_get_range(buffer, range);
     for (int i = 0; b[i]; i++) {
@@ -49,6 +49,7 @@ static int match_open_close_pairs(struct buffer *buffer, struct buffer_range ran
             }
         }
     }
+    free(b);
     return stack_size;
 }
 
