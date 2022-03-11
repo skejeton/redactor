@@ -33,6 +33,14 @@ static void remove_line(struct buffer *buffer, int at)
     buffer->line_count -= 1;
 }
 
+static int utf8_strlen(const char *l) 
+{
+    int len = strlen(l);
+    int ulen = 0;
+    while (utf8_get(&l, &len))
+        ulen++;
+    return ulen;
+}
 
 static void line_put_at(struct buffer_line *line, int at, int c)
 {
@@ -48,15 +56,7 @@ static void line_write_at(struct buffer_line *line, int at, const char *s)
 {
     while (*s)
         line_put_at(line, at++, *s++);
-}
-
-static int utf8_strlen(const char *l) 
-{
-    int len = strlen(l);
-    int ulen = 0;
-    while (utf8_get(&l, &len))
-        ulen++;
-    return ulen;
+    line->length = utf8_strlen(line->data);
 }
 
 static struct buffer_marker sanitize_marker(struct buffer *buffer, struct buffer_marker marker)
@@ -189,7 +189,8 @@ struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker m
             sl = utf8_strlen(text);
         }
         else {
-            line_put_at(&buffer->lines[marker.line], marker.column++, c);
+            char s[] = {c, 0};
+            line_write_at(&buffer->lines[marker.line], marker.column++, s);
         }
     }
     
@@ -217,12 +218,9 @@ static int range_length(struct buffer *buffer, struct buffer_range range)
 // FIXME: This function is atrocious
 char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
 {
-    range = swap_ranges(range);
-    int origcol = range.to.column;
-
+    int overline = swap_ranges(range).to.line > buffer->line_count;
     range = utify_range(buffer, sanitize_range(buffer, range));
-    // TODO: This will overestimate the result due to unicodifying, fix that
-    int nl = origcol > buffer->lines[range.to.line].size;
+
     int range_len = range_length(buffer, range);
     int buf_len = range_len+(range.to.line-range.from.line)+2;
     char *buf = malloc(buf_len);
@@ -231,8 +229,6 @@ char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
     
     if (range.from.line == range.to.line) {
         cur = strncat(buf, buffer->lines[range.from.line].data+range.from.column, range_len);
-        if (nl)
-            cur = strcat(cur, "\n");
     } else {
         cur = strcat(cur, buffer->lines[range.from.line].data+range.from.column);
         cur = strcat(cur, "\n");
@@ -242,9 +238,9 @@ char *buffer_get_range(struct buffer *buffer, struct buffer_range range)
             cur = strcat(cur, "\n");
         }
         cur = strncat(cur, buffer->lines[range.to.line].data,  range.to.column);
-        if (nl)
-            cur = strcat(cur, "\n");
     }
+    if (overline) 
+        buf[buf_len-2] = '\n'; 
     buf[buf_len-1] = 0; 
     return buf;
 }
@@ -260,7 +256,9 @@ int buffer_get_char(struct buffer *buffer, struct buffer_marker at)
     if (at.column > buffer->lines[at.line].size)
         return 0;
     at = utify_marker(buffer, at);
-    return buffer->lines[at.line].data[at.column];
+    int max = buffer->lines[at.line].size-at.column;
+    const char *l = &buffer->lines[at.line].data[at.column];
+    return utf8_get(&l, &max);
 }
 
 struct buffer buffer_init() 
@@ -270,26 +268,28 @@ struct buffer buffer_init()
     return buffer;
 }
 
-
-struct buffer_marker buffer_move_marker(struct buffer *buffer, struct buffer_marker marker, int hor, int ver) 
+struct buffer_marker buffer_move_marker_(struct buffer *buffer, struct buffer_marker marker, int hor, int ver) 
 {
     if (marker.column == 0 && hor < 0 && marker.line > 0) {
-        marker = buffer_move_marker(buffer, marker, 0, -1);
-        marker.column = buffer->lines[marker.line].size;
-        marker = buffer_move_marker(buffer, marker, hor+1, 0);
+        marker = buffer_move_marker_(buffer, marker, 0, -1);
+        marker.column = buffer->lines[marker.line].length;
+        marker = buffer_move_marker_(buffer, marker, hor+1, 0);
         return marker;
-    }
-    else if (marker.line < buffer->line_count-1 && marker.column == buffer->lines[marker.line].size && hor > 0) {
-        marker = buffer_move_marker(buffer, marker, 0, 1);
+    } else if (marker.line < buffer->line_count-1 && marker.column == buffer->lines[marker.line].length && hor > 0) {
+        marker = buffer_move_marker_(buffer, marker, 0, 1);
         marker.column = 0;
-        marker = buffer_move_marker(buffer, marker, hor-1, 0);
+        marker = buffer_move_marker_(buffer, marker, hor-1, 0);
         return marker;
-    }
-    else {
+    } else {
         marker.column += hor;
         marker.line += ver;
         return sanitize_marker(buffer, marker);
     }
+}
+
+struct buffer_marker buffer_move_marker(struct buffer *buffer, struct buffer_marker marker, int hor, int ver) 
+{
+    return buffer_move_marker_(buffer, marker, hor, ver);
 }
 
 
@@ -298,4 +298,27 @@ void buffer_deinit(struct buffer *buffer)
     for (int i = 0; i < buffer->line_count; i += 1)
         free(buffer->lines[i].data);
     free(buffer->lines);
+}
+
+
+int buffer_line_length(struct buffer *buffer, int line)
+{
+    if (line >= 0 && line < buffer->line_count) {
+        return utf8_strlen(buffer->lines[line].data);
+    } else {
+        return 0;
+    }
+}
+
+struct buffer_range buffer_marker_pretext_range(struct buffer *buffer, struct buffer_marker marker)
+{
+    marker = sanitize_marker(buffer, marker);
+    return (struct buffer_range){marker.line, 0, marker.line, marker.column};
+}
+
+struct buffer_range buffer_marker_posttext_range(struct buffer *buffer, struct buffer_marker marker)
+{
+    marker = sanitize_marker(buffer, marker);
+    int line_posttext_column = buffer_line_length(buffer, marker.line);
+    return (struct buffer_range){marker.line, marker.column, marker.line, line_posttext_column};
 }

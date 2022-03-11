@@ -1,10 +1,11 @@
 #include "input.h"
 #include "font.h"
+#include "dbg.h"
 #include "util.h"
 
 static void change_document_font_size(struct docview *view, int delta, SDL_Renderer *renderer)
 {
-    int size = font_size(view->font) + delta;
+    int size = font_get_size(view->font) + delta;
     if (size < 5)
         size = 5;
     if (size > 40)
@@ -110,7 +111,7 @@ static bool erase_tabulation(struct docedit *editor)
         if (spaces > 0) {
             // Set the selection and erase the text
             editor->cursor.selection.from = at;
-            docedit_erase(editor);
+            de_erase(editor);
         }
         return spaces;
     }
@@ -119,7 +120,7 @@ static bool erase_tabulation(struct docedit *editor)
 
 void input_process_event(struct input_state *state, struct input_pass pass)
 {
-    struct docedit *editor = &pass.view->doc;
+    struct docedit *editor = &pass.view->document;
     struct docview *view = pass.view;
     SDL_Event *event = pass.event;
 
@@ -134,21 +135,21 @@ void input_process_event(struct input_state *state, struct input_pass pass)
             if (is_cursor_below_content(editor) && strchr(")}]", event->text.text[0])) {
                 erase_tabulation(editor);
             }
-            docedit_insert(editor, event->text.text);
+            de_insert(editor, event->text.text);
         }
     } break;
     case SDL_MOUSEWHEEL:
         if (state->ctrl) {
             change_document_font_size(view, event->wheel.y, pass.renderer);
         } else {   
-            view->scroll.y -= event->wheel.y*30;
+            dv_scroll(view, 0, event->wheel.y*30.0);
         }
         break;
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:
         state->leftmousedown = event->button.button == SDL_BUTTON_LEFT && event->type == SDL_MOUSEBUTTONDOWN;
         if (state->leftmousedown) {
-            docview_tap(false, (SDL_Point) {mouse_x, mouse_y}, view);
+            dv_tap(view, state->shift, (SDL_Point){event->button.x, event->button.y});
         }    
         break;
     case SDL_WINDOWEVENT:
@@ -174,15 +175,15 @@ void input_process_event(struct input_state *state, struct input_pass pass)
             break;
         case SDL_SCANCODE_X:
             if (state->ctrl) {
-                char *c = docedit_get_selection(editor);
+                char *c = de_get_selection(editor);
                 SDL_SetClipboardText(c);
-                docedit_erase(editor);
+                de_erase(editor);
                 free(c);
             }
             break;
         case SDL_SCANCODE_C:
             if (state->ctrl) {
-                char *c = docedit_get_selection(editor);
+                char *c = de_get_selection(editor);
                 SDL_SetClipboardText(c);
                 free(c);
             }
@@ -190,7 +191,7 @@ void input_process_event(struct input_state *state, struct input_pass pass)
         case SDL_SCANCODE_V:
             if (state->ctrl) {
                 char *s = SDL_GetClipboardText();
-                docedit_insert(editor, s);
+                de_insert(editor, s);
                 SDL_free(s);
             }
             break;
@@ -206,19 +207,19 @@ void input_process_event(struct input_state *state, struct input_pass pass)
             break;
         case SDL_SCANCODE_BACKSPACE:
             if (!erase_tabulation(editor))
-                docedit_erase(editor);
+                de_erase(editor);
             break;
         case SDL_SCANCODE_UP:
-            docedit_move_cursor(editor, state->shift, 0, -1);
+            de_move_cursor(editor, state->shift, 0, -1);
             break;
         case SDL_SCANCODE_DOWN:
-            docedit_move_cursor(editor, state->shift, 0, 1);
+            de_move_cursor(editor, state->shift, 0, 1);
             break;
         case SDL_SCANCODE_LEFT:
-            docedit_move_cursor(editor, state->shift, -1, 0);
+            de_move_cursor(editor, state->shift, -1, 0);
             break;
         case SDL_SCANCODE_RIGHT:
-            docedit_move_cursor(editor, state->shift, 1, 0);
+            de_move_cursor(editor, state->shift, 1, 0);
             break;
         case SDL_SCANCODE_RETURN: {
             int spaces = match_open_close_pairs(&editor->buffer, (struct buffer_range) {{0}, editor->cursor.selection.to}, "({[", ")}]") * 4;
@@ -228,13 +229,13 @@ void input_process_event(struct input_state *state, struct input_pass pass)
                     persistspaces = get_cursor_position(editor).column;
                 spaces += persistspaces-spaces;
             }
-           docedit_insert(editor, "\n");
+           de_insert(editor, "\n");
             while (spaces--)
-                docedit_insert(editor, " ");
+                de_insert(editor, " ");
         } break;
         case SDL_SCANCODE_TAB:
             for (int i = 0, col = editor->cursor.selection.from.column; i < (4 - col % 4); i++)
-                docedit_insert(editor, " ");
+                de_insert(editor, " ");
             break;
         case SDL_SCANCODE_LCTRL:
         case SDL_SCANCODE_RCTRL:

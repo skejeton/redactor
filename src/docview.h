@@ -6,16 +6,13 @@
 
 struct docview {
     SDL_Rect viewport;
-    SDL_Rect line_column_viewport;
+    SDL_FPoint viewport_scroll;
     struct font *font;
-    struct docedit doc;
-    float blink;
-    // Tracking the change in position of a cursor to reset the blink
-    struct buffer_marker prev_cursor_pos;
-    SDL_FPoint scroll;
-    SDL_FPoint scroll_damped;
+    struct docedit document;
+    int number_line_width;
 };
 
-void docview_draw(SDL_Renderer *renderer, struct docview *view);
-void docview_tap(bool shift, SDL_Point xy, struct docview *view);
+void dv_draw(struct docview *view, SDL_Renderer *renderer);
+void dv_tap(struct docview *view, bool shift, SDL_Point xy);
+void dv_scroll(struct docview *view, float dx, float dy);
 #endif

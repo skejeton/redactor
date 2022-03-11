@@ -36,9 +36,14 @@ struct font* font_resize(struct font *result, int size, SDL_Renderer *renderer)
     return result;
 }
 
-int font_size(struct font *font)
+int font_get_size(struct font *font)
 {
     return font->font_size;
+}
+
+int font_get_height(struct font *font)
+{
+    return font->map.height;
 }
 
 SDL_Point font_measure_text(struct font *font, const char *text)

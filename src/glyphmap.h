@@ -48,7 +48,7 @@ static void gm_deinit(struct glyphmap *glyphmap);
 // Queries metrics of specific character
 static struct glyphmetrics gm_query_metrics(struct glyphmap *map, int character);
 // Returns size with correct kerning
-SDL_Point gm_glyph_size(struct glyphmap *map, int character);
+static SDL_Point gm_glyph_size(struct glyphmap *map, int character);
 // Renders a glyph on screen, returns size with correct kerning
 static SDL_Point gm_render_glyph(struct glyphmap *map, SDL_Point at, int character, SDL_Renderer *renderer);
 // Returns rectangle positioned at minx,miny with size of the glyph rectangle
@@ -60,7 +60,7 @@ static SDL_Rect gm_glyph_raw_rect(struct glyphmetrics metrics);
 
 static struct glyphmap gm_init(TTF_Font *font, int padding)
 {
-    struct glyphmap result = { 0 };
+    struct glyphmap result = {0};
     result.padding = padding;
     result.font = font;
     result.height = TTF_FontHeight(font);
@@ -139,7 +139,7 @@ static void pack_glyphs_(struct glyphchunk *chunk, int padding)
 {
     // 256 x 256 should be reasonable for smaller font sizes,
     // reducing the memory usage
-    SDL_Point bounds = { 256, 256 };
+    SDL_Point bounds = {256, 256};
 
     // Try to pack until it fits
     while (try_pack_glyphs_(chunk, padding, bounds)) {
@@ -259,12 +259,12 @@ static struct glyphchunk* query_chunk_with_texture_(struct glyphmap *map, int ch
     }
 }
 
-void gm_set_color(struct glyphmap *map, SDL_Color color)
+static void gm_set_color(struct glyphmap *map, SDL_Color color)
 {
     map->color = color;
 }
 
-SDL_Point gm_glyph_size(struct glyphmap *map, int character)
+static SDL_Point gm_glyph_size(struct glyphmap *map, int character)
 {
     return (SDL_Point){gm_query_metrics(map, character).advance, map->height};
 }

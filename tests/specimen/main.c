@@ -2,6 +2,5 @@
 
 int main()
 {
-    printf("Uwu");   
-    printf("Hello world ハロー・ワールド");
+    printf("Hello world фывафвыава");
 }

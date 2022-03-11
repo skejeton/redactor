@@ -17,6 +17,8 @@ struct buffer_range {
 struct buffer_line {
     char *data;
     int size;
+    // UTF8 Length
+    int length;
 };
 
 struct buffer {
@@ -39,5 +41,8 @@ struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker m
 struct buffer_marker buffer_move_marker(struct buffer *buffer, struct buffer_marker marker, int hor, int ver);
 char *buffer_get_range(struct buffer *buffer, struct buffer_range range);
 int buffer_get_char(struct buffer *buffer, struct buffer_marker at);
+int buffer_line_length(struct buffer *buffer, int line);
+struct buffer_range buffer_marker_pretext_range(struct buffer *buffer, struct buffer_marker marker);
+struct buffer_range buffer_marker_posttext_range(struct buffer *buffer, struct buffer_marker marker);
 #endif
 
