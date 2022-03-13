@@ -24,6 +24,8 @@ static void draw_number_line(struct buftext_pass *pass)
     rect_cut_left(&pass->viewport, maximum_line_width + number_line_padding);
 }
 
+
+
 void dv_draw(struct docview *view, SDL_Renderer *renderer)
 {
     struct buftext_pass text_pass = {
@@ -35,8 +37,10 @@ void dv_draw(struct docview *view, SDL_Renderer *renderer)
         .scroll = view->scroll
     };
 
+    begin_buffer_pass(&text_pass);
     draw_number_line(&text_pass);
     draw_buffer_text(&text_pass);
+    end_buffer_pass(&text_pass);
 }
 
 void dv_scroll(struct docview *view, float dx, float dy)

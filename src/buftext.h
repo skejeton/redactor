@@ -17,6 +17,16 @@ static void set_renderer_color_from_sdl_color(SDL_Renderer *renderer, SDL_Color 
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
 }
 
+static void begin_buffer_pass(struct buftext_pass *pass)
+{
+    SDL_RenderSetClipRect(pass->renderer, &pass->viewport);
+}
+
+static void end_buffer_pass(struct buftext_pass *pass)
+{
+    SDL_RenderSetClipRect(pass->renderer, NULL);
+}
+
 static void apply_buffer_text_pass(struct buftext_pass *pass)
 {
     set_renderer_color_from_sdl_color(pass->renderer, pass->color);
