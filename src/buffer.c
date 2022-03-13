@@ -313,12 +313,12 @@ int buffer_line_length(struct buffer *buffer, int line)
 struct buffer_range buffer_marker_pretext_range(struct buffer *buffer, struct buffer_marker marker)
 {
     marker = sanitize_marker(buffer, marker);
-    return (struct buffer_range){marker.line, 0, marker.line, marker.column};
+    return (struct buffer_range){{marker.line, 0}, {marker.line, marker.column}};
 }
 
 struct buffer_range buffer_marker_posttext_range(struct buffer *buffer, struct buffer_marker marker)
 {
     marker = sanitize_marker(buffer, marker);
     int line_posttext_column = buffer_line_length(buffer, marker.line);
-    return (struct buffer_range){marker.line, marker.column, marker.line, line_posttext_column};
+    return (struct buffer_range){{marker.line, marker.column}, {marker.line, line_posttext_column}};
 }

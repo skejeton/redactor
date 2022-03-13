@@ -59,13 +59,6 @@ static struct buffer_marker get_cursor_position(struct docedit *editor)
     return editor->cursor.selection.to;
 }
 
-static struct buffer_marker get_beneath_cursor_position(struct docedit *editor)
-{
-    struct buffer_marker marker = editor->cursor.selection.to;
-    marker.column -= 1; // This makes that the cursor points to the character it's beneath
-    return marker;
-}
-
 static int calculate_tabulation_spaces(struct docedit *editor)
 {
     struct buffer_marker at = get_cursor_position(editor);

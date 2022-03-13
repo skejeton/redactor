@@ -5,11 +5,12 @@
 #include "ui.h"
 
 struct docview {
+    // TODO: Make a scroll viewport
     SDL_Rect viewport;
-    SDL_FPoint viewport_scroll;
+    SDL_FPoint scroll;
+
     struct font *font;
     struct docedit document;
-    int number_line_width;
 };
 
 void dv_draw(struct docview *view, SDL_Renderer *renderer);

@@ -13,7 +13,6 @@ int font_get_size(struct font *font);
 int font_get_height(struct font *font);
 SDL_Point font_measure_text(struct font *font, const char *text);
 SDL_Point font_measure_glyph(struct font *font, int glyph);
-
 SDL_Point font_write_text(struct font *font, const char *text, SDL_Point xy, SDL_Renderer *renderer);
 
 #endif
