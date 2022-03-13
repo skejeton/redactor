@@ -12,9 +12,6 @@ struct buftext_pass {
     SDL_Color color; 
 };
 
-struct buftext_style {
-};
-
 static void set_renderer_color_from_sdl_color(SDL_Renderer *renderer, SDL_Color color)
 {
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
