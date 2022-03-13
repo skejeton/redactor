@@ -48,8 +48,6 @@ static SDL_FPoint restrict_scroll(struct buftext_pass *pass, SDL_FPoint scroll)
 
 static void update(struct docview *view, struct buftext_pass *pass)
 {
-
-
     TODO("This is not right, I'm assigning scroll to both, because in "
          "the following code I rely on pass scroll being same as the view scroll");
     pass->scroll = view->scroll = restrict_scroll(pass, view->scroll);
@@ -99,10 +97,10 @@ void dv_scroll(struct docview *view, float dx, float dy)
 
 void dv_tap(struct docview *view, bool shift, SDL_Point xy)
 {
-    // HACK: This is needed because if we get tap event fired twice before
-    //       handling it, and if the last event sets shift to true then 
-    //       the handler will not know that we stopped selection,
-    //       this is a workaround, but this should be fixed through a proper event queue
+    TODO("HACK: This is needed because if we get tap event fired twice before "
+         "handling it, and if the last event sets shift to true then "
+         "the handler will not know that we stopped selection. "
+         "This is a workaround, but this should be fixed through a proper event queue");
     if (!shift)
         view->events.set_cursor_position_event_reset_selection = true;
     view->events.set_cursor_position_event_set = true;
