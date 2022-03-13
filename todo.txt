@@ -14,7 +14,6 @@ Make Shift+Enter insert a new line before the one you're on
 Fix high cpu usage <-- Implement render cache
 Make shift+tab append a tab at the beginning
 Extracting position/size SDL_Point from SDL_Rect
-Use `to` as the cursor not `from`
 Double tap to select a word
 Triple tap to select the whole line
 Handle unsuccessful file write
@@ -28,3 +27,4 @@ Font fallbacks
 Handle tab symbol rendering
 Use tabs in makefiles
 Zoom in into center instead of line 0
+Unselect upon escape
