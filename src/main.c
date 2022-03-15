@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
         "redactor",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         1920/2, 1080/2,
-        SDL_WINDOW_SHOWN
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
     );
     
     if (window == NULL) {

@@ -1,4 +1,4 @@
-static inline int utf8_get(const char **restrict s_, int *restrict max)
+static inline int utf8_get(const char **const restrict s_, int *restrict max)
 {
     const static int class[32] = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5 };
     unsigned char *s = (unsigned char*)*s_;

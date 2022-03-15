@@ -46,19 +46,20 @@ int font_get_height(struct font *font)
     return font->map.height;
 }
 
+SDL_Point font_measure_glyph(struct font *font, int glyph)
+{
+    return gm_glyph_size(&font->map, glyph);
+}
+
 SDL_Point font_measure_text(struct font *font, const char *text)
 {
     int width = 0;
     int max = strlen(text);
-    while (*text) {
-        width += gm_query_metrics(&font->map, utf8_get(&text, &max)).advance;
+    int c;
+    while ((c = utf8_get(&text, &max))) {
+        width += font_measure_glyph(font, c).x;
     }
-    return (SDL_Point) { width, font->map.height };
-}
-
-SDL_Point font_measure_glyph(struct font *font, int glyph)
-{
-    return gm_glyph_size(&font->map, glyph);
+    return (SDL_Point) {width, font->map.height};
 }
 
 SDL_Point font_write_text(struct font *font, const char *text, SDL_Point xy, SDL_Renderer *renderer)
@@ -68,8 +69,9 @@ SDL_Point font_write_text(struct font *font, const char *text, SDL_Point xy, SDL
     gm_set_color(&font->map, c);
     int orig = xy.x;
     int max = strlen(text);
-    while (*text) {
-        xy.x += gm_render_glyph(&font->map, xy, utf8_get(&text, &max), renderer).x;
+    int ch;
+    while ((ch = utf8_get(&text, &max))) {
+        xy.x += gm_render_glyph(&font->map, xy, ch, renderer).x;
     }
     return (SDL_Point) { xy.x-orig, font->map.height };
 }

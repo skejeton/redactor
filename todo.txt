@@ -1,6 +1,5 @@
 Add control movements, that will stride by a word
 Fix cursor staying in the wrong "remember" position after write (or don't?)
-Put indentations after a brace
 Highlight include path as a string
 Highlight define value as general syntax?
 Make a command line that darkens the code content and lets you open files, etc

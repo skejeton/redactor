@@ -322,3 +322,13 @@ struct buffer_range buffer_marker_posttext_range(struct buffer *buffer, struct b
     int line_posttext_column = buffer_line_length(buffer, marker.line);
     return (struct buffer_range){{marker.line, marker.column}, {marker.line, line_posttext_column}};
 }
+
+int buffer_marker_cmp(struct buffer_marker a, struct buffer_marker b)
+{
+    if (a.line == b.line && a.column == b.column)
+        return 0;
+    else if ((a.line == b.line && a.column < b.column) || (a.line < b.line))
+        return -1;
+    else
+        return 1;
+}

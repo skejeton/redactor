@@ -35,6 +35,8 @@ struct buffer_marker buffer_sanitize_marker(struct buffer *buffer, struct buffer
 struct buffer_range buffer_swap_ranges(struct buffer_range range);
 bool buffer_markers_equal(struct buffer_marker a, struct buffer_marker b);
 bool buffer_range_empty(struct buffer_range range);
+// no sanitzing done, might return wrong result if not sanitized
+int buffer_marker_cmp(struct buffer_marker a, struct buffer_marker b);
 
 struct buffer_marker buffer_remove(struct buffer *buffer, struct buffer_range range);
 struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker marker, const char *text);

@@ -1,109 +1,227 @@
+#include <SDL2/SDL_render.h>
+#include "font.h"
+#include "rect.h"
+#include "utf8.h"
+#include "buffer.h"
 #include "docview.h"
-#include "buftext.h"
 
-static void draw_number_line(struct buftext_pass *pass)
+static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
-    apply_buffer_text_pass(pass);
-    SDL_Renderer *renderer = pass->renderer;
-    struct font *font = pass->font;
-    SDL_Point position = get_buffer_text_pass_starting_position(pass), line_size;
-    const int right_padding = font_get_height(font);
-    char number_buf[32];
-    int max_width = 0;
+    struct buffer_marker marker = buffer_swap_ranges(view->document.cursor.selection).from;
+    struct buffer_range range = (struct buffer_range) { {marker.line, 0}, marker };
+    char *s = buffer_get_range(&view->document.buffer, range);
+    SDL_Point size = font_measure_text(view->font, s);
+    free(s);
+    int x = size.x;
+    int y = viewport.y+marker.line*size.y;
+    s = buffer_get_range(&view->document.buffer, view->document.cursor.selection);
 
-    for (int i = 0; i < pass->buffer->line_count; ++i) {
-        TODO("Replace snprintf with a faster int-to-string converter");
-        snprintf(number_buf, sizeof number_buf, "%d", i+1);
-        line_size = font_write_text(font, number_buf, position, renderer);
-        position.y += line_size.y;
-        if (max_width < line_size.x)
-            max_width = line_size.x;
+    // TODO handle variable length
+    SDL_SetRenderDrawColor(renderer, 255, 240, 230, 16);
+    for (int i = 0; s[i];) {
+        int orig = i;
+        while (s[i] && s[i] != '\n')
+            i++;
+        int c = s[i];
+        s[i] = 0;
+        int w = font_measure_text(view->font, s+orig).x;
+        if (c == '\n')
+            w += font_measure_glyph(view->font, ' ').x;
+        SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x, y, w, size.y});
+        s[i] = c;
+        if (s[i])
+            i++;
+        x = 0;
+        y += size.y;
     }
 
-    rect_cut_left(&pass->viewport, max_width + right_padding);
-}
-
-static SDL_Rect convert_pretext_rect_to_cursor(SDL_Rect rect)
-{
-    rect.x += rect.w;
-    rect.w = 2;
-    return rect;
-}
-
-static void draw_cursor(struct buftext_pass *pass, SDL_Color color, struct buffer_marker marker)
-{
-    SDL_Rect cursor_rect = convert_pretext_rect_to_cursor(get_buffer_text_pretext_rect(pass, marker));
-
-    set_renderer_color_from_sdl_color(pass->renderer, color);
-    SDL_RenderFillRect(pass->renderer, &cursor_rect);
-}
-
-static SDL_FPoint restrict_scroll(struct buftext_pass *pass, SDL_FPoint scroll)
-{
-    if (scroll.y < 0)
-        scroll.y = 0;
-
-    return scroll;
-}
-
-static void update(struct docview *view, struct buftext_pass *pass)
-{
-    TODO("This is not right, I'm assigning scroll to both, because in "
-         "the following code I rely on pass scroll being same as the view scroll");
-    pass->scroll = view->scroll = restrict_scroll(pass, view->scroll);
-}
-
-static void handle_events(struct docview *view, struct buftext_pass *pass)
-{
-    if (view->events.set_cursor_position_event_set) {
-        struct buffer_marker marker = map_position_to_marker(pass, view->events.set_cursor_position_point);
-        de_set_cursor(&view->document, view->events.set_cursor_position_event_shift, marker);
-        if (view->events.set_cursor_position_event_reset_selection)
-            de_move_cursor(&view->document, false, 0, 0);
-        view->events.set_cursor_position_event_reset_selection = false;
-        view->events.set_cursor_position_event_set = false;
+    // Draw dots on spaces
+    y = viewport.y+marker.line*size.y;
+    x = size.x;
+    for (int i = 0; s[i]; i++) {
+        SDL_Point size = font_measure_glyph(view->font, s[i]);
+        if (s[i] == ' ' || s[i] == '\t') {
+            int dot_size = font_get_size(view->font)/8;
+            SDL_RenderFillRect(renderer, &(SDL_Rect){viewport.x+x+size.x/2-dot_size/2, y+size.y/2-dot_size/2, dot_size, dot_size});
+        }
+        if (s[i] == '\n') {
+            y += size.y;
+            x = 0;
+        } else {
+            x += size.x;
+        }
     }
+    free(s);
+}
+
+
+static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
+{
+    struct buffer *buffer = &view->document.buffer;
+    SDL_Point position = (SDL_Point) { viewport.x, viewport.y };
+    
+    SDL_SetRenderDrawColor(renderer, 250, 220, 190, 255);
+    for (int i = 0; i < buffer->line_count; i++) {
+        // TODO: Handle the offset more appropriately
+        position.y += font_write_text(view->font, buffer->lines[i].data, position, renderer).y;
+        if (position.y > viewport.h+view->viewport.y)
+            break;
+    }
+    return position;
+}
+
+
+static SDL_Rect get_marker_rect(SDL_Rect viewport, struct buffer_marker marker, struct docview *view)
+{
+    SDL_Point viewport_pos = {viewport.x, viewport.y};
+    struct buffer_range range = (struct buffer_range) { {marker.line, 0}, marker };
+    char *line = buffer_get_range(&view->document.buffer, range);
+    SDL_Point line_size = font_measure_text(view->font, line);
+    free(line);
+    int at_line = range.from.line;
+    SDL_Point cursor_position = { viewport_pos.x + line_size.x, viewport_pos.y + line_size.y * at_line };
+    SDL_Rect cursor_rect = { cursor_position.x, cursor_position.y, 2, line_size.y };
+    return cursor_rect;
+}
+
+
+static void draw_cursor(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
+{
+    SDL_Rect cursor_rect = get_marker_rect(viewport, view->document.cursor.selection.to, view);
+    SDL_Rect cursor2_rect = get_marker_rect(viewport, view->document.cursor.selection.from, view);
+    SDL_SetRenderDrawColor(renderer, 0, 150, 220, 255.0*(cos(view->blink*8)/2+0.5));
+    SDL_RenderFillRect(renderer, &cursor_rect);
+    SDL_SetRenderDrawColor(renderer, 220, 150, 0, 255.0*(cos(view->blink*8)/2+0.5));
+    SDL_RenderFillRect(renderer, &cursor2_rect);
+}
+
+
+static void focus_on_cursor(SDL_Rect viewport, struct docview *view)
+{
+    viewport.x += view->line_column_viewport.w;
+    viewport.w -= view->line_column_viewport.w;
+
+    SDL_Rect cursor_rect = get_marker_rect(viewport, view->document.cursor.selection.to, view);
+    cursor_rect.y -= viewport.y;
+    if (cursor_rect.y > (view->scroll.y+viewport.h-cursor_rect.h))
+        view->scroll.y = cursor_rect.y+cursor_rect.h-viewport.h;
+    if (cursor_rect.y < viewport.y+view->scroll.y)
+        view->scroll.y = cursor_rect.y;
+    int charw = font_measure_glyph(view->font, ' ').x;
+
+    cursor_rect.x -= viewport.x-charw;
+    if (cursor_rect.x > (view->scroll.x+viewport.w-cursor_rect.w))
+        view->scroll.x = cursor_rect.x+cursor_rect.w-viewport.w;
+    if (cursor_rect.x-view->scroll.x-charw*2 < 0)
+        view->scroll.x += cursor_rect.x-view->scroll.x-charw*2;
+}
+
+void dv_tap(struct docview *view, bool shift, SDL_Point xy)
+{
+    SDL_Rect viewport = view->viewport;
+    rect_cut_left(&viewport, view->line_column_viewport.w);
+
+    SDL_Point screen = {
+        xy.x-viewport.x+view->scroll_damped.x,
+        xy.y-viewport.y+view->scroll_damped.y,
+    };
+    
+    SDL_Point glyph_size = font_measure_glyph(view->font, ' ');
+    int line = screen.y/glyph_size.y;
+    // Normalize line 
+    line = buffer_move_marker(&view->document.buffer, (struct buffer_marker){line}, 0, 0).line;
+    int w = 0;
+    // FIXME: Hardcode!
+    int mind = 100000;
+    int minl = view->document.buffer.lines[line].size;
+    
+    const char *linetext = view->document.buffer.lines[line].data;
+    int linesiz = view->document.buffer.lines[line].size;
+    int i, c;
+    for (i = 0; (c = utf8_get(&linetext, &linesiz)); ++i) {
+        if (abs(w - screen.x) < mind) {
+            mind = abs(w - screen.x);
+            minl = i;
+        }
+        w += font_measure_glyph(view->font, c).x;
+    } 
+    if (abs(w - screen.x) < mind) {
+        mind = abs(w - screen.x);
+        minl = i;
+    }
+    
+    de_set_cursor(&view->document, shift, (struct buffer_marker){line, minl});
+}
+
+void docview_draw_lines(SDL_Rect *viewport, SDL_Renderer *renderer, struct docview *view)
+{
+    int last_line_no = view->document.buffer.line_count;
+    char line_no_text[32];
+    snprintf(line_no_text, 32, "%d", last_line_no);
+    int max_width = font_measure_text(view->font, line_no_text).x;
+    SDL_Point position = {viewport->x, viewport->y};
+    for (int i = 0; i < last_line_no; i++) {
+        snprintf(line_no_text, 32, "%d", i+1);
+        if (i == view->document.cursor.selection.to.line)
+            SDL_SetRenderDrawColor(renderer, 250, 220, 200, 64);
+        else
+            SDL_SetRenderDrawColor(renderer, 250, 220, 200, 32);
+        SDL_Point size = font_measure_text(view->font, line_no_text);
+        max_width = size.x > max_width ? size.x : max_width;
+        font_write_text(view->font, line_no_text, position, renderer);
+        position.y += size.y;
+    }
+
+    view->line_column_viewport = rect_cut_left(viewport, max_width+font_get_size(view->font));
 }
 
 void dv_draw(struct docview *view, SDL_Renderer *renderer)
 {
-    const SDL_Color primary_cursor_color = {220, 150, 0, 255};
-    const SDL_Color secondary_cursor_color = {0, 150, 220, 255};
-    struct buftext_pass text_pass = {
-        .buffer = &view->document.buffer,
-        .font = view->font,
-        .renderer = renderer,
-        .color = {250, 220, 190, 255},
-        .viewport = view->viewport,
-        .scroll = view->scroll
-    };
+    SDL_Rect viewport = view->viewport;
+    if (view->document.cursor.selection.to.line != view->prev_cursor_pos.line ||
+        view->document.cursor.selection.to.column != view->prev_cursor_pos.column) {
+        // Reset cursor blink after a movement
+        view->blink = 0;
+        focus_on_cursor(viewport, view);
+    }
 
-    update(view, &text_pass);
+    // TODO: Use deltatime
+    view->blink += 0.016;
 
-    begin_buffer_pass(&text_pass);
-    draw_number_line(&text_pass);
-    draw_buffer_text(&text_pass);
-    handle_events(view, &text_pass);
-    draw_cursor(&text_pass, secondary_cursor_color, view->document.cursor.selection.from);
-    draw_cursor(&text_pass, primary_cursor_color, view->document.cursor.selection.to);
-    end_buffer_pass(&text_pass);
+        
+    view->prev_cursor_pos = view->document.cursor.selection.to;
+    
+    if (view->scroll.x < 0) 
+        view->scroll.x = 0;
+    if (view->scroll.y < 0) 
+        view->scroll.y = 0;
+    // Smooth out the scrolling
+    view->scroll_damped.x += (view->scroll.x-view->scroll_damped.x)/5;
+    view->scroll_damped.y += (view->scroll.y-view->scroll_damped.y)/5;
+
+    SDL_RenderSetClipRect(renderer, &viewport);
+    viewport.y -= view->scroll_damped.y;
+
+    docview_draw_lines(&viewport, renderer, view);
+    viewport.y += view->scroll_damped.y;
+    SDL_RenderSetClipRect(renderer, &viewport);
+    viewport.y -= view->scroll_damped.y;
+    viewport.x -= view->scroll_damped.x;
+    SDL_Point buffer_size = draw_lines(viewport, renderer, view);    
+    draw_highlight(viewport, renderer, view);
+
+    // Clamp scrolling to not scroll outside bounds
+    if (view->scroll.y > buffer_size.y-viewport.y-50) 
+        view->scroll.y = buffer_size.y-viewport.y-50;
+    
+    // HACK: adding hardcoded offset to the cursor position to align it with the line values
+    draw_cursor(viewport, renderer, view);
+    
+    SDL_RenderSetClipRect(renderer, NULL);
 }
 
 void dv_scroll(struct docview *view, float dx, float dy)
 {
     view->scroll.x += dx;
     view->scroll.y -= dy;
-}
-
-void dv_tap(struct docview *view, bool shift, SDL_Point xy)
-{
-    TODO("HACK: This is needed because if we get tap event fired twice before "
-         "handling it, and if the last event sets shift to true then "
-         "the handler will not know that we stopped selection. "
-         "This is a workaround, but this should be fixed through a proper event queue");
-    if (!shift)
-        view->events.set_cursor_position_event_reset_selection = true;
-    view->events.set_cursor_position_event_set = true;
-    view->events.set_cursor_position_event_shift = shift;
-    view->events.set_cursor_position_point = xy;
 }
