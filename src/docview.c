@@ -87,8 +87,8 @@ static SDL_Rect get_marker_rect(SDL_Rect viewport, struct buffer_marker marker, 
 
 static void draw_cursor(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
-    SDL_Rect cursor_rect = get_marker_rect(viewport, view->document.cursor.selection.to, view);
-    SDL_Rect cursor2_rect = get_marker_rect(viewport, view->document.cursor.selection.from, view);
+    SDL_Rect cursor_rect = get_marker_rect(viewport, view->document.cursor.selection.from, view);
+    SDL_Rect cursor2_rect = get_marker_rect(viewport, view->document.cursor.selection.to, view);
     SDL_SetRenderDrawColor(renderer, 0, 150, 220, 255.0*(cos(view->blink*8)/2+0.5));
     SDL_RenderFillRect(renderer, &cursor_rect);
     SDL_SetRenderDrawColor(renderer, 220, 150, 0, 255.0*(cos(view->blink*8)/2+0.5));

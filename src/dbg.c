@@ -12,12 +12,13 @@ void todo__(const char *file, int line, const char *function, const char *fmt, .
     fprintf(stderr, "\n");
 }
 
-void assert__(char *cond, int x, const char *fmt, ...)
+int assert__(const char *cond, _Bool x, const char *fmt, ...)
 {
     if (!x) {
         fprintf(stderr, "\x1b[31;1massertion failed\x1b[0m: %s \x1b[37m// ", cond);
         VAERR(fmt);
         fprintf(stderr, "\x1b[0m\n");
-        exit(-1);
+        return 1;
     }
+    return 0;
 }
