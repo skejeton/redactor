@@ -84,15 +84,59 @@ static SDL_Rect get_marker_rect(SDL_Rect viewport, struct buffer_marker marker, 
     return cursor_rect;
 }
 
-
-static void draw_cursor(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
+static void draw_cursor(SDL_Rect viewport, SDL_Renderer *renderer, struct buffer_marker marker, SDL_Color color, int beams, struct docview *view)
 {
-    SDL_Rect cursor_rect = get_marker_rect(viewport, view->document.cursor.selection.from, view);
-    SDL_Rect cursor2_rect = get_marker_rect(viewport, view->document.cursor.selection.to, view);
-    SDL_SetRenderDrawColor(renderer, 0, 150, 220, 255.0*(cos(view->blink*8)/2+0.5));
+    SDL_Rect cursor_rect = get_marker_rect(viewport, marker, view);
+    SDL_Rect beam_rect = { cursor_rect.x+cursor_rect.w, cursor_rect.y, cursor_rect.h/8, 2 };
+    color.a *= (cos(view->blink*8)/2+0.5);
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     SDL_RenderFillRect(renderer, &cursor_rect);
-    SDL_SetRenderDrawColor(renderer, 220, 150, 0, 255.0*(cos(view->blink*8)/2+0.5));
-    SDL_RenderFillRect(renderer, &cursor2_rect);
+
+
+    // left override
+    if (beams & 01) {
+        beam_rect.x -= beam_rect.w+cursor_rect.w;
+    }
+
+    // upper part
+    if (beams & 02) {
+        SDL_RenderFillRect(renderer, &beam_rect);
+    }
+
+    // lower part
+    if (beams & 04) {
+        beam_rect.y += cursor_rect.h-beam_rect.h;
+        SDL_RenderFillRect(renderer, &beam_rect);
+    }
+}
+
+static void draw_cursor_range(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
+{
+    struct buffer_range range = view->document.cursor.selection;
+
+    int lflags = 0, rflags = 01, tmp;
+
+    if (buffer_markers_equal(range.from, range.to)) {
+        // default
+    } else if (range.from.line == range.to.line) {
+        // brackety
+        lflags |= 04|02;
+        rflags |= 04|02;
+    } else {
+        lflags |= 02;
+        rflags |= 04;
+    }
+
+    //
+    if (buffer_marker_cmp(range.from, range.to) > 0) {
+        tmp = lflags;
+        lflags = rflags;
+        rflags = tmp;
+    }
+
+
+    draw_cursor(viewport, renderer, range.from, (SDL_Color){0, 150, 220, 255}, lflags, view);
+    draw_cursor(viewport, renderer, range.to, (SDL_Color){220, 150, 0, 255}, rflags, view);
 }
 
 
@@ -210,12 +254,12 @@ void dv_draw(struct docview *view, SDL_Renderer *renderer)
     SDL_Point buffer_size = draw_lines(viewport, renderer, view);    
     draw_highlight(viewport, renderer, view);
 
+    SDL_RenderSetClipRect(renderer, &view->viewport);
     // Clamp scrolling to not scroll outside bounds
     if (view->scroll.y > buffer_size.y-viewport.y-50) 
         view->scroll.y = buffer_size.y-viewport.y-50;
     
-    // HACK: adding hardcoded offset to the cursor position to align it with the line values
-    draw_cursor(viewport, renderer, view);
+    draw_cursor_range(viewport, renderer, view);
     
     SDL_RenderSetClipRect(renderer, NULL);
 }
