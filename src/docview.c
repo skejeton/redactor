@@ -4,6 +4,7 @@
 #include "utf8.h"
 #include "buffer.h"
 #include "docview.h"
+#include "synstream.h"
 
 static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
@@ -54,20 +55,10 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
     free(s);
 }
 
-
 static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
     struct buffer *buffer = &view->document.buffer;
-    SDL_Point position = (SDL_Point) { viewport.x, viewport.y };
-    
-    SDL_SetRenderDrawColor(renderer, 250, 220, 190, 255);
-    for (int i = 0; i < buffer->line_count; i++) {
-        // TODO: Handle the offset more appropriately
-        position.y += font_write_text(view->font, buffer->lines[i].data, position, renderer).y;
-        if (position.y > viewport.h+view->viewport.y)
-            break;
-    }
-    return position;
+    return draw_highlighted_buffer(renderer, view->font, buffer, viewport);
 }
 
 
@@ -114,7 +105,10 @@ static void draw_cursor_range(SDL_Rect viewport, SDL_Renderer *renderer, struct 
 {
     struct buffer_range range = view->document.cursor.selection;
 
-    int lflags = 0, rflags = 01, tmp;
+
+    int lflags = 0, 
+        rflags = 01, // right cursor needs lhs beam
+        tmp;
 
     if (buffer_markers_equal(range.from, range.to)) {
         // default
@@ -123,11 +117,12 @@ static void draw_cursor_range(SDL_Rect viewport, SDL_Renderer *renderer, struct 
         lflags |= 04|02;
         rflags |= 04|02;
     } else {
+        // L-shaped
         lflags |= 02;
         rflags |= 04;
     }
 
-    //
+    // swap, because range.from might appear after range.to
     if (buffer_marker_cmp(range.from, range.to) > 0) {
         tmp = lflags;
         lflags = rflags;
@@ -197,7 +192,7 @@ void dv_tap(struct docview *view, bool shift, SDL_Point xy)
     de_set_cursor(&view->document, shift, (struct buffer_marker){line, minl});
 }
 
-void docview_draw_lines(SDL_Rect *viewport, SDL_Renderer *renderer, struct docview *view)
+static void draw_line_numbers(SDL_Rect *viewport, SDL_Renderer *renderer, struct docview *view)
 {
     int last_line_no = view->document.buffer.line_count;
     char line_no_text[32];
@@ -246,7 +241,7 @@ void dv_draw(struct docview *view, SDL_Renderer *renderer)
     SDL_RenderSetClipRect(renderer, &viewport);
     viewport.y -= view->scroll_damped.y;
 
-    docview_draw_lines(&viewport, renderer, view);
+    draw_line_numbers(&viewport, renderer, view);
     viewport.y += view->scroll_damped.y;
     SDL_RenderSetClipRect(renderer, &viewport);
     viewport.y -= view->scroll_damped.y;

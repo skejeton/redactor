@@ -214,6 +214,9 @@ void input_process_event(struct input_state *state, struct input_pass pass)
         case SDL_SCANCODE_RIGHT:
             de_move_cursor(editor, state->shift, 1, 0);
             break;
+        case SDL_SCANCODE_ESCAPE:
+            de_move_cursor(editor, state->shift, 0, 0);
+            break;
         case SDL_SCANCODE_RETURN: {
             int spaces = match_open_close_pairs(&editor->buffer, (struct buffer_range) {{0}, editor->cursor.selection.to}, "({[", ")}]") * 4;
             int persistspaces = calculate_tabulation_spaces(editor);
