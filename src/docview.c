@@ -58,7 +58,8 @@ static void draw_highlight(SDL_Rect viewport, SDL_Renderer *renderer, struct doc
 static SDL_Point draw_lines(SDL_Rect viewport, SDL_Renderer *renderer, struct docview *view)
 {
     struct buffer *buffer = &view->document.buffer;
-    return draw_buffer(renderer, view->font, buffer, viewport);
+    SDL_Color text_color = {250, 220, 190, 255};
+    return draw_buffer(renderer, view->font, buffer, viewport, text_color);
 }
 
 
