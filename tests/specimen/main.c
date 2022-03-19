@@ -6,8 +6,10 @@
 
 int main()
 {
-    printf("test %d тест", 32);
+    printf("test \" тест", 32);
 }
+
+
 
 
 

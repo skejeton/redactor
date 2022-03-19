@@ -40,7 +40,29 @@ bool found_number(const char *line, int *size_out)
         line++;
 
     *size_out = line-start;
-    printf("size of number is %d\n", (int)(line-start));
+    return true;
+}
+
+bool fracture_string(struct fracture_list *list, const char *line, int *size_out)
+{
+    const char *start = line;
+    if (*line != '"')
+        return false;
+
+    line++;
+    fracture_feed(list, 1, 2);
+    while (*line && *line != '"') {
+        if (strncmp(line, "\\\"", 2) == 0) {
+            fracture_feed(list, 2, 3);
+            line++;
+        } else {
+            fracture_feed(list, 1, 2);
+        }
+        line++;
+    }
+    fracture_feed(list, 1, 2);
+
+    *size_out = ++line-start;
     return true;
 }
 
@@ -50,7 +72,9 @@ struct fracture_list fracture_numbers(const char *line)
     int size;
 
     while (*line) {
-        if (found_number(line, &size))
+        if (fracture_string(&list, line, &size))
+            ;
+        else if (found_number(line, &size))
             fracture_feed(&list, size, 1);
         else
             fracture_feed(&list, (size = 1), 0);
@@ -68,9 +92,11 @@ struct fracture_list fracture_numbers(const char *line)
  * returns: position plus size of last character */
 void render_line_fractures(char *line, SDL_Renderer *renderer, struct font *font, SDL_Point *at, struct fracture_list *list)
 {
-    SDL_Color presets[2] = {
+    SDL_Color presets[4] = {
         {250, 220, 190, 255},
         {201, 134,   0, 255},
+        { 95, 135,  35, 255},
+        {224,  92, 123, 255},
     };
 
     SDL_Point size;
@@ -115,6 +141,7 @@ SDL_Point draw_buffer(SDL_Renderer *screen, struct font *font, struct buffer *bu
     for (int line = 0; line < buffer->line_count; ++line) {
         char *text = buffer->lines[line].data;
         struct fracture_list fractured_line = fracture_numbers(text);
+        printf("Line %d\n", line+1);
         dump_fracture_segment_list(&fractured_line);
         render_line_fractures(text, screen, font, &at, &fractured_line);
     }
