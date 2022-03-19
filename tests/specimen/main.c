@@ -1,7 +1,13 @@
 #include <stdio.h>
 
+/* 
+ * Multiline comment :)
+ */
+
 int main()
 {
-    printf("test тест");
+    printf("test %d тест", 32);
 }
+
+
 
