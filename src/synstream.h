@@ -43,16 +43,16 @@ bool found_number(const char *line, int *size_out)
     return true;
 }
 
-bool fracture_string(struct fracture_list *list, const char *line, int *size_out)
+bool fracture_string(struct fracture_list *list, const char *line, int *size_out, int c)
 {
     const char *start = line;
-    if (*line != '"')
+    if (*line != c)
         return false;
 
     line++;
     fracture_feed(list, 1, 2);
-    while (*line && *line != '"') {
-        if (strncmp(line, "\\\"", 2) == 0) {
+    while (*line && *line != c) {
+        if (*line == '\\') {
             fracture_feed(list, 2, 3);
             line++;
         } else {
@@ -72,7 +72,9 @@ struct fracture_list fracture_numbers(const char *line)
     int size;
 
     while (*line) {
-        if (fracture_string(&list, line, &size))
+        if (fracture_string(&list, line, &size, '"'))
+            ;
+        else if (fracture_string(&list, line, &size, '\''))
             ;
         else if (found_number(line, &size))
             fracture_feed(&list, size, 1);
@@ -141,8 +143,6 @@ SDL_Point draw_buffer(SDL_Renderer *screen, struct font *font, struct buffer *bu
     for (int line = 0; line < buffer->line_count; ++line) {
         char *text = buffer->lines[line].data;
         struct fracture_list fractured_line = fracture_numbers(text);
-        printf("Line %d\n", line+1);
-        dump_fracture_segment_list(&fractured_line);
         render_line_fractures(text, screen, font, &at, &fractured_line);
     }
 
