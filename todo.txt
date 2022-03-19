@@ -1,3 +1,4 @@
+use color modifier system to color the source
 --
 Add control movements, that will stride by a word
 Fix cursor staying in the wrong "remember" position after write (or don't?)

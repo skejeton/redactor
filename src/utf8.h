@@ -1,5 +1,14 @@
 #ifndef REDACTOR_UTF8_H
 #define REDACTOR_UTF8_H
+#include <stdio.h>
+
+static inline int utf8_glyphlen(const char *s_)
+{
+    const unsigned char *s = (const unsigned char *)s_;
+    const static int class[32] = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5 };
+    return *s == 0 ? 0 : class[*s>>3];
+}
+
 static inline int utf8_get(const char **const restrict s_, int *restrict max)
 {
     const static int class[32] = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5 };

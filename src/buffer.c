@@ -148,6 +148,7 @@ static void erase_from_line(struct buffer_line *line, int from, int to)
     memmove(line->data+from, line->data+to, line->size-to);
     line->size -= to-from;
     line->data[line->size] = 0;
+    line->length = utf8_strlen(line->data);
 }
 
 struct buffer_marker buffer_remove(struct buffer *buffer, struct buffer_range range)
@@ -161,10 +162,11 @@ struct buffer_marker buffer_remove(struct buffer *buffer, struct buffer_range ra
         buffer->lines[range.from.line].data[range.from.column] = 0;
         buffer->lines[range.from.line].size = range.from.column;
         line_write_at(&buffer->lines[range.from.line], range.from.column, buffer->lines[range.to.line].data+range.to.column);
+	buffer->lines[range.from.line].length = utf8_strlen(buffer->lines[range.from.line].data);
 
         for (int i = range.from.line+1; i <= range.to.line; ++i) {
             remove_line(buffer, range.from.line+1);
-        } 
+        }
     }
     return return_range.from;
 }
@@ -185,6 +187,7 @@ struct buffer_marker buffer_insert(struct buffer *buffer, struct buffer_marker m
             line_write_at(&buffer->lines[marker.line], 0, tail);
             buffer->lines[pl].data[marker.column] = 0;
             buffer->lines[pl].size = marker.column;
+            buffer->lines[pl].length = utf8_strlen(buffer->lines[pl].data);
             marker.column = 0;
             sl = utf8_strlen(text);
         }
@@ -270,16 +273,15 @@ struct buffer buffer_init()
 
 struct buffer_marker buffer_move_marker_(struct buffer *buffer, struct buffer_marker marker, int hor, int ver) 
 {
+    marker = sanitize_marker(buffer, marker);
     if (marker.column == 0 && hor < 0 && marker.line > 0) {
-        marker = buffer_move_marker_(buffer, marker, 0, -1);
+        marker.line--;
         marker.column = buffer->lines[marker.line].length;
-        marker = buffer_move_marker_(buffer, marker, hor+1, 0);
-        return marker;
-    } else if (marker.line < buffer->line_count-1 && marker.column == buffer->lines[marker.line].length && hor > 0) {
-        marker = buffer_move_marker_(buffer, marker, 0, 1);
+        return buffer_move_marker_(buffer, marker, hor+1, 0);
+    } else if (marker.line < buffer->line_count-1 && marker.column >= buffer->lines[marker.line].length && hor > 0) {
+        marker.line++;
         marker.column = 0;
-        marker = buffer_move_marker_(buffer, marker, hor-1, 0);
-        return marker;
+        return buffer_move_marker_(buffer, marker, hor-1, 0);
     } else {
         marker.column += hor;
         marker.line += ver;
