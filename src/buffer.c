@@ -252,11 +252,17 @@ int buffer_get_char(struct buffer *buffer, struct buffer_marker at)
 {
     if (at.line < 0)
         return 0;
-    if (at.line >= buffer->line_count)
+    else if (at.line >= buffer->line_count)
         return 0;
-    if (at.column < 0)
+    else if (at.column < 0)
         return 0;
-    if (at.column > buffer->lines[at.line].size)
+    else if (at.column == buffer->lines[at.line].size) {
+        // NOTE: We shouldn't report a newline on the last line.
+        if (at.line == buffer->line_count-1)
+            return 0;
+        else
+            return '\n';
+    } else if (at.column > buffer->lines[at.line].size)
         return 0;
     at = utify_marker(buffer, at);
     int max = buffer->lines[at.line].size-at.column;

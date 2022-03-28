@@ -2,6 +2,38 @@
 #include "font.h"
 #include "buffer.h"
 
+struct buffer_iter {
+    struct buffer *buf;
+    struct buffer_marker marker;
+    int ch;
+};
+
+///buffer_iter///
+struct buffer_iter buffer_iter_init(struct buffer *buf)
+{
+    return (struct buffer_iter){.buf = buf};
+}
+
+int buffer_iter_peek(struct buffer_iter *iter)
+{
+    return iter->ch;
+}
+
+int buffer_iter_fetch(struct buffer_iter *iter)
+{
+    int retch = iter->ch;
+    iter->ch = buffer_get_char(iter->buf, iter->marker);
+    iter->marker = buffer_move_marker(iter->buf, iter->marker, 1, 0);
+    return retch;
+}
+
+char *buffer_iter_get_line_tail(struct buffer_iter *iter)
+{
+    return iter->buf->lines[iter->marker.line].data+iter->marker.column;
+}
+
+///fracture///
+
 struct segment {
     int size, color;
 };
@@ -66,32 +98,37 @@ bool fracture_string(struct fracture_list *list, const char *line, int *size_out
     return true;
 }
 
-struct fracture_list fracture_numbers(const char *line)
+void fracture_line(struct fracture_list *list, const char *line)
 {
-    struct fracture_list list = {0};
     int size;
-
+    
     while (*line) {
-        if (fracture_string(&list, line, &size, '"'))
+        if (fracture_string(list, line, &size, '"'))
             ;
-        else if (fracture_string(&list, line, &size, '\''))
+        else if (fracture_string(list, line, &size, '\''))
             ;
         else if (found_number(line, &size))
-            fracture_feed(&list, size, 1);
+            fracture_feed(list, size, 1);
         else
-            fracture_feed(&list, (size = 1), 0);
+            fracture_feed(list, (size = 1), 0);
         line += size;
     }
-
+    
     /* push the final element */
-    fracture_enlist(&list);
-
-    return list;
+    fracture_enlist(list);
 }
 
-/* draws fractured line
- *------------------------------------
- * returns: position plus size of last character */
+void fracture_buffer(struct fracture_list *list, struct buffer *buffer)
+{
+    for (int i = 0; i < buffer->line_count; ++i) {
+        fracture_line(list, buffer->lines[i].data);
+    }
+}
+
+///draw///
+// draws fractured line
+//
+// returns: position plus size of last character 
 void render_line_fractures(char *line, SDL_Renderer *renderer, struct font *font, SDL_Point *at, struct fracture_list *list)
 {
     SDL_Color presets[4] = {
@@ -129,10 +166,9 @@ void dump_fracture_segment_list(struct fracture_list *list)
     }
     printf("}\n");
 }
-
-/* draws buffer with syntax highlighting
- *--------------------------------------         
- * returns: position plus size of last character */
+// draws buffer with syntax highlighting
+//
+// returns: position plus size of last character
 SDL_Point draw_buffer(SDL_Renderer *screen, struct font *font, struct buffer *buffer, SDL_Rect viewport, SDL_Color color)
 {
     /* start rendering text from the viewport position */
@@ -140,9 +176,11 @@ SDL_Point draw_buffer(SDL_Renderer *screen, struct font *font, struct buffer *bu
 
     SDL_SetRenderDrawColor(screen, color.r, color.g, color.b, color.a);
 
+        
     for (int line = 0; line < buffer->line_count; ++line) {
         char *text = buffer->lines[line].data;
-        struct fracture_list fractured_line = fracture_numbers(text);
+        struct fracture_list fractured_line = {0};
+        fracture_line(&fractured_line, text);
         render_line_fractures(text, screen, font, &at, &fractured_line);
     }
 
