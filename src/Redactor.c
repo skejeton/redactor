@@ -7,15 +7,12 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdbool.h>
+
 // Define macros here
 #define DieErr(...) do {fprintf(stderr, __VA_ARGS__); exit(-1);} while (0)
+
+#ifdef  __has_attribute
 // Define attributes here
-#if defined __has_attribute
-#       if __has_attribute (no_sanitize)
-#               define Attr_AsanLeakFix __attribute__ ((no_sanitize("address")))
-#       else
-#               define Attr_AsanLeakFix
-#       endif
 #endif
 
 struct {
