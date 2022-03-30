@@ -204,12 +204,6 @@ void Redactor_UseArgs(Redactor *rs, int argc, char *argv[])
         
 }
 
-void Redactor_EndSDL(Redactor *rs)
-{
-        TTF_Quit();
-        SDL_Quit();
-}
-
 void Redactor_End(Redactor *rs)
 {
         // NOTE: Allocated in UseArgs
@@ -224,21 +218,22 @@ void Redactor_End(Redactor *rs)
         SDL_DestroyRenderer(rs->sdl_renderer);
         SDL_DestroyWindow(rs->sdl_window); 
         fclose(rs->file_handle);
-        Redactor_EndSDL(rs);
+        TTF_Quit();
+        SDL_Quit();
 }
 
 // -- draw
 
 int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 {
-        // -- init
-        SDL_Surface *text_surface = TTF_RenderText_Blended(rs->sdl_font_handle, text, (SDL_Color){255, 255, 255, 255});
+        SDL_Surface *text_surface = TTF_RenderUTF8_Blended(rs->sdl_font_handle, text, (SDL_Color){255, 255, 255, 255});
         if (text_surface == NULL) {
                 return 0; // TODO: Log failed text allocation
         }
 
         SDL_Texture *text_texture = SDL_CreateTextureFromSurface(rs->sdl_renderer, text_surface);
         if (text_texture == NULL) {
+                SDL_FreeSurface(text_surface);
                 return 0; // TODO: Log failed texture allocation
         }
 
@@ -248,8 +243,8 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
         SDL_RenderCopy(rs->sdl_renderer, text_texture, NULL, &(SDL_Rect){x, y, text_surface->w, text_surface->h});
 
         // -- free
-        SDL_FreeSurface(text_surface);
         SDL_DestroyTexture(text_texture);
+        SDL_FreeSurface(text_surface);
 
         return y_delta;
 }
