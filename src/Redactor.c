@@ -36,14 +36,18 @@
 struct {
         char         *temp_respath;
 
-        bool          program_running;
+        const char   *cfg_program_dataDir;
+        const char   *cfg_font_respath;
+        int           cfg_font_size;
+
         char         *program_location;
         char         *program_dataPath;
-        const char   *program_dataDir;
+        bool          program_running;
 
         SDL_Window   *sdl_window;
         SDL_Renderer *sdl_renderer;
-        TTF_Font     *sdl_fileFont;
+
+        TTF_Font     *sdl_font_handle;
 
         bool          file_is_new;
         const char   *file_name;
@@ -113,10 +117,43 @@ char *Util_ConcatPaths(const char *path_a, const char *path_b)
         return s;
 }
 
-//---
 
-void Redactor_InitWin(Redactor *rs)
+// -- util
+
+char *Redactor_GetTempResPath(Redactor *rs, const char *resname)
 {
+        free(rs->temp_respath);
+        return (rs->temp_respath = Util_ConcatPaths(rs->program_dataPath, resname));
+}
+
+void Redactor_PrintMeta(Redactor *rs)
+{
+        printf("|-- redactor meta -------------\n");
+        printf("|   cfg_program_dataDir  | %s\n", rs->cfg_program_dataDir);
+        printf("|   cfg_font_respath     | %s\n", rs->cfg_font_respath);
+        printf("|   cfg_font_size        | %d\n", rs->cfg_font_size);
+        printf("|   program_location     | %s\n", rs->program_location);
+        printf("|   program_dataPath     | %s\n", rs->program_dataPath);
+        printf("|   file_name            | %s\n", rs->file_name);
+        printf("|   file_is_new          | %d\n", rs->file_is_new);
+        printf("|-- file_data -----------------\n%s\n", rs->file_data);
+        printf("|-- end redactor meta ---------\n");
+}
+
+// -- init/deinit
+
+void Redactor_Init(Redactor *rs)
+{
+        // -- Init default cfg 
+        rs->cfg_program_dataDir = "data";
+        rs->cfg_font_respath = "monospace.ttf";
+        rs->cfg_font_size = 16;
+
+        // -- Init paths
+        rs->program_location = Util_GetProgramPath();
+        rs->program_dataPath = Util_ConcatPaths(rs->program_location, rs->cfg_program_dataDir);
+
+        // -- Init sdl
         if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
                 DieErr("Fatal: Can not init SDL: %s\n", SDL_GetError());
         }
@@ -135,18 +172,14 @@ void Redactor_InitWin(Redactor *rs)
                 DieErr("Fatal: Can not init renderer: %s\n", SDL_GetError());
         }
 
+        // -- Init font
+        rs->sdl_font_handle = TTF_OpenFont(Redactor_GetTempResPath(rs, rs->cfg_font_respath), rs->cfg_font_size);
+        if (!rs->sdl_font_handle) {
+                DieErr("Fatal: Can not font: %s\n", TTF_GetError());
+        }
+
+        // -- Init values
         rs->program_running = true;
-}
-
-void Redactor_InitDefCfg(Redactor *rs)
-{
-        rs->program_dataDir = "data";
-}
-
-void Redactor_InitPaths(Redactor *rs)
-{
-        rs->program_location = Util_GetProgramPath();
-        rs->program_dataPath = Util_ConcatPaths(rs->program_location, rs->program_dataDir);
 }
 
 void Redactor_UseArgs(Redactor *rs, int argc, char *argv[])
@@ -187,33 +220,69 @@ void Redactor_End(Redactor *rs)
         free(rs->program_location);
         free(rs->program_dataPath);
 
+        TTF_CloseFont(rs->sdl_font_handle);
         SDL_DestroyRenderer(rs->sdl_renderer);
         SDL_DestroyWindow(rs->sdl_window); 
         fclose(rs->file_handle);
         Redactor_EndSDL(rs);
 }
 
-//---
+// -- draw
 
-char *Redactor_GetTempResPath(Redactor *rs, const char *resname)
+int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 {
-        free(rs->temp_respath);
-        return (rs->temp_respath = Util_ConcatPaths(rs->program_dataPath, resname));
+        // -- init
+        SDL_Surface *text_surface = TTF_RenderText_Blended(rs->sdl_font_handle, text, (SDL_Color){255, 255, 255, 255});
+        if (text_surface == NULL) {
+                return 0; // TODO: Log failed text allocation
+        }
+
+        SDL_Texture *text_texture = SDL_CreateTextureFromSurface(rs->sdl_renderer, text_surface);
+        if (text_texture == NULL) {
+                return 0; // TODO: Log failed texture allocation
+        }
+
+        int y_delta = text_surface->h;
+
+        // -- draw
+        SDL_RenderCopy(rs->sdl_renderer, text_texture, NULL, &(SDL_Rect){x, y, text_surface->w, text_surface->h});
+
+        // -- free
+        SDL_FreeSurface(text_surface);
+        SDL_DestroyTexture(text_texture);
+
+        return y_delta;
 }
 
-void Redactor_PrintMeta(Redactor *rs)
+void Redactor_DrawDocument(Redactor *rs)
 {
-        printf("|-- redactor meta -------------\n");
-        printf("|   program_location | %s\n", rs->program_location);
-        printf("|   program_dataPath | %s\n", rs->program_dataPath);
-        printf("|   program_dataDir  | %s\n", rs->program_dataDir);
-        printf("|   file_name        | %s\n", rs->file_name);
-        printf("|   file_is_new      | %d\n", rs->file_is_new);
-        printf("|-- file_data -----------------\n%s\n", rs->file_data);
-        printf("|-- end redactor meta ---------\n");
+        char *buffer = rs->file_data;
+        int y = 0;
+        while (*buffer) {
+                const char *start = buffer;
+                char c;
+
+                // Step until newline
+                while (*buffer && *buffer != '\n') {
+                        buffer++;
+                }
+
+                c = *buffer;
+                *buffer = 0;
+
+                y += Redactor_DrawText(rs, 0, y, start);
+
+                *buffer = c;
+
+                // NOTE: Skip the newline unless it's null terminator
+                if (*buffer) {
+                        buffer++;
+                }
+
+        }
 }
 
-//---
+// -- control
 
 void Redactor_HandleEvents(Redactor *rs)
 {
@@ -233,17 +302,15 @@ void Redactor_Cycle(Redactor *rs)
         Redactor_HandleEvents(rs);
         SDL_SetRenderDrawColor(rs->sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->sdl_renderer);
-
-
+        Redactor_DrawDocument(rs);
+        
         SDL_RenderPresent(rs->sdl_renderer);
 }
 
 int Redactor_Main(int argc, char *argv[])
 {
         Redactor rs = {0};
-        Redactor_InitDefCfg(&rs);
-        Redactor_InitPaths(&rs);
-        Redactor_InitWin(&rs);
+        Redactor_Init(&rs);
         Redactor_UseArgs(&rs, argc, argv);
         Redactor_PrintMeta(&rs);
         while (rs.program_running) {
