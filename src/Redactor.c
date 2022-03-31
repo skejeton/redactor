@@ -38,8 +38,16 @@ typedef struct {
         SDL_Texture *atlas;
 } GlyphChunk;
 
+#define Bgm_Tiled       1<<0
+
+typedef struct {
+        SDL_Texture *texture;
+        int bgm_flags;
+} Background;
+
 struct {
-        float         toy_texture_viewer_scale;
+        Background    toy_textureViewer_bg;
+        float         toy_textureViewer_scale;
 
         char         *temp_respath;
 
@@ -149,7 +157,7 @@ void Redactor_PrintMeta(Redactor *rs)
 
 void Redactor_PackAsciiCharTab(Redactor *rs)
 {
-        int sfw = 216, sfh = 201, x = 0, y = 0, maxh = 0, padding = 0;
+        int sfw = 300, sfh = 300, x = 0, y = 0, maxh = 0, padding = 1;
         SDL_Surface *dsf = SDL_CreateRGBSurface(0, sfw, sfh, 32, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
         SDL_SetSurfaceBlendMode(dsf, SDL_BLENDMODE_BLEND);
         SDL_FillRect(dsf, NULL, SDL_MapRGBA(dsf->format, 0, 0, 0, 255));
@@ -234,9 +242,15 @@ void Redactor_Init(Redactor *rs)
 
         // -- Init values
         rs->program_running = true;
-        rs->toy_texture_viewer_scale = 1;
+        rs->toy_textureViewer_scale = 1;
 
-        // -- misc
+        // TODO: Handle loading resources better
+        SDL_Surface *bgSurface = SDL_LoadBMP(Redactor_GetTempResPath(rs, "debgtool.bmp"));
+        rs->toy_textureViewer_bg.texture = SDL_CreateTextureFromSurface(rs->render_sdl_renderer, bgSurface);
+        SDL_FreeSurface(bgSurface);
+        rs->toy_textureViewer_bg.bgm_flags = 1;
+
+        // -- Misc
         Redactor_PackAsciiCharTab(rs);
 }
 
@@ -273,6 +287,7 @@ void Redactor_End(Redactor *rs)
         free(rs->program_dataPath);
 
         TTF_CloseFont(rs->render_sdl_font_handle);
+        SDL_DestroyTexture(rs->toy_textureViewer_bg.texture);
         SDL_DestroyTexture(rs->render_font_ascii_chunk.atlas);
         SDL_DestroyRenderer(rs->render_sdl_renderer);
         SDL_DestroyWindow(rs->render_sdl_window); 
@@ -336,10 +351,35 @@ void Redactor_DrawDocument(Redactor *rs)
         }
 }
 
+void Redactor_DrawBg(Redactor *rs, Background *bg)
+{
+        int ofsx = 0, ofsy = 0, xcount = 0, ycount = 0;
+        int texture_w, texture_h;
+        SDL_QueryTexture(bg->texture, NULL, NULL, &texture_w, &texture_h);
+
+        // NOTE: Zero divide
+        if (texture_w == 0 || texture_h == 0)  {
+                return;
+        }
+
+        if (bg->bgm_flags | Bgm_Tiled) {
+                int screen_w, screen_h;
+                SDL_GetWindowSize(rs->render_sdl_window, &screen_w, &screen_h);
+                xcount = screen_w / texture_w + 2;
+                ycount = screen_h / texture_h + 2;
+        } 
+ 
+        for (int x = 0; x < xcount; ++x) {
+                for (int y = 0; y < ycount; ++y) {
+                        SDL_RenderCopy(rs->render_sdl_renderer, bg->texture, NULL, &(SDL_Rect){x*texture_w, y*texture_w, texture_w, texture_h});
+                }
+        }
+}
+
 // NOTE: For debugging
 void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
 {
-        float scale = rs->toy_texture_viewer_scale;
+        float scale = rs->toy_textureViewer_scale;
         int texture_w, texture_h, screen_w, screen_h, tex_pos_x, tex_pos_y;
         SDL_QueryTexture(texture, NULL, NULL, &texture_w, &texture_h);
         SDL_GetWindowSize(rs->render_sdl_window, &screen_w, &screen_h);
@@ -351,7 +391,7 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
         tex_pos_y = (screen_h - texture_h) / 2;
 
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 80, 255);
-        SDL_RenderFillRect(rs->render_sdl_renderer, &(SDL_Rect){0, 0, screen_w, screen_h});
+        Redactor_DrawBg(rs, &rs->toy_textureViewer_bg);
         char title[1024];
         snprintf(title, 1024, "Texture viewer | w %d | h %d | s %g", texture_w, texture_h, scale);
 
@@ -374,7 +414,7 @@ void Redactor_HandleEvents(Redactor *rs)
                         rs->program_running = false;
                         break;
                 case SDL_MOUSEWHEEL:
-                        rs->toy_texture_viewer_scale += event.wheel.y/10.0;
+                        rs->toy_textureViewer_scale += event.wheel.y/10.0;
                         break;
                 }
         }
