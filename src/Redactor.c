@@ -33,7 +33,14 @@
 // Define attributes here
 #endif
 
+typedef struct {
+        SDL_Rect glyphs[256];
+        SDL_Texture *atlas;
+} GlyphChunk;
+
 struct {
+        float         toy_texture_viewer_scale;
+
         char         *temp_respath;
 
         const char   *cfg_program_dataDir;
@@ -44,16 +51,16 @@ struct {
         char         *program_dataPath;
         bool          program_running;
 
-        SDL_Window   *sdl_window;
-        SDL_Renderer *sdl_renderer;
-
-        TTF_Font     *sdl_font_handle;
+        GlyphChunk    render_font_ascii_chunk;
+        SDL_Window   *render_sdl_window;
+        SDL_Renderer *render_sdl_renderer;
+        TTF_Font     *render_sdl_font_handle;
 
         bool          file_is_new;
         const char   *file_name;
         FILE         *file_handle;
         char         *file_data;
-} 
+}
 typedef Redactor;
 
 char *Util_ReadFileStr(FILE *f)
@@ -162,24 +169,27 @@ void Redactor_Init(Redactor *rs)
                 DieErr("Fatal: Can not init SDL_ttf: %s\n", TTF_GetError());
         }
 
-        rs->sdl_window = SDL_CreateWindow("redactor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1920/2, 1080/2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-        if (!rs->sdl_window) {
+        rs->render_sdl_window = SDL_CreateWindow("redactor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1920/2, 1080/2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        if (!rs->render_sdl_window) {
                 DieErr("Fatal: Can not init window: %s\n", SDL_GetError());
         }
                 
-        rs->sdl_renderer = SDL_CreateRenderer(rs->sdl_window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-        if (!rs->sdl_renderer) {
+        rs->render_sdl_renderer = SDL_CreateRenderer(rs->render_sdl_window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+        if (!rs->render_sdl_renderer) {
                 DieErr("Fatal: Can not init renderer: %s\n", SDL_GetError());
         }
 
+        SDL_SetRenderDrawBlendMode(rs->render_sdl_renderer, SDL_BLENDMODE_BLEND);
+
         // -- Init font
-        rs->sdl_font_handle = TTF_OpenFont(Redactor_GetTempResPath(rs, rs->cfg_font_respath), rs->cfg_font_size);
-        if (!rs->sdl_font_handle) {
+        rs->render_sdl_font_handle = TTF_OpenFont(Redactor_GetTempResPath(rs, rs->cfg_font_respath), rs->cfg_font_size);
+        if (!rs->render_sdl_font_handle) {
                 DieErr("Fatal: Can not font: %s\n", TTF_GetError());
         }
 
         // -- Init values
         rs->program_running = true;
+        rs->toy_texture_viewer_scale = 1;
 }
 
 void Redactor_UseArgs(Redactor *rs, int argc, char *argv[])
@@ -214,9 +224,9 @@ void Redactor_End(Redactor *rs)
         free(rs->program_location);
         free(rs->program_dataPath);
 
-        TTF_CloseFont(rs->sdl_font_handle);
-        SDL_DestroyRenderer(rs->sdl_renderer);
-        SDL_DestroyWindow(rs->sdl_window); 
+        TTF_CloseFont(rs->render_sdl_font_handle);
+        SDL_DestroyRenderer(rs->render_sdl_renderer);
+        SDL_DestroyWindow(rs->render_sdl_window); 
         fclose(rs->file_handle);
         TTF_Quit();
         SDL_Quit();
@@ -226,12 +236,12 @@ void Redactor_End(Redactor *rs)
 
 int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 {
-        SDL_Surface *text_surface = TTF_RenderUTF8_Blended(rs->sdl_font_handle, text, (SDL_Color){255, 255, 255, 255});
+        SDL_Surface *text_surface = TTF_RenderUTF8_Blended(rs->render_sdl_font_handle, text, (SDL_Color){255, 255, 255, 255});
         if (text_surface == NULL) {
                 return 0; // TODO: Log failed text allocation
         }
 
-        SDL_Texture *text_texture = SDL_CreateTextureFromSurface(rs->sdl_renderer, text_surface);
+        SDL_Texture *text_texture = SDL_CreateTextureFromSurface(rs->render_sdl_renderer, text_surface);
         if (text_texture == NULL) {
                 SDL_FreeSurface(text_surface);
                 return 0; // TODO: Log failed texture allocation
@@ -240,7 +250,7 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
         int y_delta = text_surface->h;
 
         // -- draw
-        SDL_RenderCopy(rs->sdl_renderer, text_texture, NULL, &(SDL_Rect){x, y, text_surface->w, text_surface->h});
+        SDL_RenderCopy(rs->render_sdl_renderer, text_texture, NULL, &(SDL_Rect){x, y, text_surface->w, text_surface->h});
 
         // -- free
         SDL_DestroyTexture(text_texture);
@@ -277,7 +287,33 @@ void Redactor_DrawDocument(Redactor *rs)
         }
 }
 
+// NOTE: For debugging
+void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
+{
+        float scale = rs->toy_texture_viewer_scale;
+        int texture_w, texture_h, screen_w, screen_h, tex_pos_x, tex_pos_y;
+        SDL_QueryTexture(texture, NULL, NULL, &texture_w, &texture_h);
+        SDL_GetWindowSize(rs->render_sdl_window, &screen_w, &screen_h);
+        
+        texture_w *= scale;
+        texture_h *= scale;
+
+        tex_pos_x = (screen_w - texture_w) / 2;
+        tex_pos_y = (screen_h - texture_h) / 2;
+
+        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 80, 255);
+        SDL_RenderFillRect(rs->render_sdl_renderer, &(SDL_Rect){0, 0, screen_w, screen_h});
+        char title[1024];
+        snprintf(title, 1024, "Texture viewer | w %d | h %d | s %g", texture_w, texture_h, scale);
+
+        Redactor_DrawText(rs, tex_pos_x, tex_pos_y-20, title);
+        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 70, 50, 128, 128);
+        SDL_RenderDrawRect(rs->render_sdl_renderer, &(SDL_Rect){tex_pos_x-2, tex_pos_y-2, texture_w+4, texture_h+4});
+        SDL_RenderCopy(rs->render_sdl_renderer, texture, NULL, &(SDL_Rect){tex_pos_x, tex_pos_y, texture_w, texture_h});
+}
+
 // -- control
+
 
 void Redactor_HandleEvents(Redactor *rs)
 {
@@ -288,24 +324,35 @@ void Redactor_HandleEvents(Redactor *rs)
                 case SDL_QUIT:
                         rs->program_running = false;
                         break;
+                case SDL_MOUSEWHEEL:
+                        rs->toy_texture_viewer_scale += event.wheel.y/10.0;
+                        break;
                 }
         }
 }
 
+static SDL_Texture *tx;
+
 void Redactor_Cycle(Redactor *rs)
 {
         Redactor_HandleEvents(rs);
-        SDL_SetRenderDrawColor(rs->sdl_renderer, 0, 0, 0, 255);
-        SDL_RenderClear(rs->sdl_renderer);
+        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
+        SDL_RenderClear(rs->render_sdl_renderer);
         Redactor_DrawDocument(rs);
+        Redactor_DrawTextureViewer(rs, tx);
         
-        SDL_RenderPresent(rs->sdl_renderer);
+        SDL_RenderPresent(rs->render_sdl_renderer);
 }
 
 int Redactor_Main(int argc, char *argv[])
 {
         Redactor rs = {0};
         Redactor_Init(&rs);
+
+        // NOTE: Debug
+        SDL_Surface *sr = SDL_LoadBMP(Redactor_GetTempResPath(&rs, "011_sampltex.bmp"));
+        tx = SDL_CreateTextureFromSurface(rs.render_sdl_renderer, sr);
+
         Redactor_UseArgs(&rs, argc, argv);
         Redactor_PrintMeta(&rs);
         while (rs.program_running) {
