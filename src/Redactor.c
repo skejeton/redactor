@@ -147,6 +147,51 @@ void Redactor_PrintMeta(Redactor *rs)
         printf("|-- end redactor meta ---------\n");
 }
 
+void Redactor_PackAsciiCharTab(Redactor *rs)
+{
+        int sfw = 216, sfh = 201, x = 0, y = 0, maxh = 0, padding = 0;
+        SDL_Surface *dsf = SDL_CreateRGBSurface(0, sfw, sfh, 32, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
+        SDL_SetSurfaceBlendMode(dsf, SDL_BLENDMODE_BLEND);
+        SDL_FillRect(dsf, NULL, SDL_MapRGBA(dsf->format, 0, 0, 0, 255));
+
+        
+
+        for (int i = 0; i < 256; ++i) {
+                SDL_Surface *chsf = TTF_RenderGlyph32_Blended(rs->render_sdl_font_handle, i, (SDL_Color){255, 255, 255, 255});
+        
+                if (chsf) {
+                        // NOTE: Destination only
+                        int chsfw = chsf->w+padding*2;
+                        int chsfh = chsf->h+padding*2;
+
+                        // NOTE: Check if can't fit in row anymore
+                        while (chsfw > (sfw-x)) {
+                                x = 0;
+                                y += maxh;
+                                maxh = chsfh;
+                        }
+
+                        // NOTE: Check if can't fit in column anymore (means we cant fit all chars -- total fail)
+                        if (chsfh > (sfh-y)) {
+                                // TODO: Instead resize surface and try again
+                                DieErr("Too tight to pack all ascii chars");
+                        }
+
+                        if (chsfh > maxh) {
+                                maxh = chsfh;
+                        }
+
+                        SDL_BlitSurface(chsf, &(SDL_Rect){0, 0, chsf->w, chsf->h}, dsf, &(SDL_Rect){x+padding, y+padding, chsfw, chsfh});
+                        x += chsfw;
+
+                        SDL_FreeSurface(chsf);
+                }
+        }
+
+        rs->render_font_ascii_chunk.atlas = SDL_CreateTextureFromSurface(rs->render_sdl_renderer, dsf);
+        SDL_FreeSurface(dsf);
+}
+
 // -- init/deinit
 
 void Redactor_Init(Redactor *rs)
@@ -190,6 +235,9 @@ void Redactor_Init(Redactor *rs)
         // -- Init values
         rs->program_running = true;
         rs->toy_texture_viewer_scale = 1;
+
+        // -- misc
+        Redactor_PackAsciiCharTab(rs);
 }
 
 void Redactor_UseArgs(Redactor *rs, int argc, char *argv[])
@@ -225,6 +273,7 @@ void Redactor_End(Redactor *rs)
         free(rs->program_dataPath);
 
         TTF_CloseFont(rs->render_sdl_font_handle);
+        SDL_DestroyTexture(rs->render_font_ascii_chunk.atlas);
         SDL_DestroyRenderer(rs->render_sdl_renderer);
         SDL_DestroyWindow(rs->render_sdl_window); 
         fclose(rs->file_handle);
@@ -331,15 +380,13 @@ void Redactor_HandleEvents(Redactor *rs)
         }
 }
 
-static SDL_Texture *tx;
-
 void Redactor_Cycle(Redactor *rs)
 {
         Redactor_HandleEvents(rs);
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
         Redactor_DrawDocument(rs);
-        Redactor_DrawTextureViewer(rs, tx);
+        Redactor_DrawTextureViewer(rs, rs->render_font_ascii_chunk.atlas);
         
         SDL_RenderPresent(rs->render_sdl_renderer);
 }
@@ -348,10 +395,6 @@ int Redactor_Main(int argc, char *argv[])
 {
         Redactor rs = {0};
         Redactor_Init(&rs);
-
-        // NOTE: Debug
-        SDL_Surface *sr = SDL_LoadBMP(Redactor_GetTempResPath(&rs, "011_sampltex.bmp"));
-        tx = SDL_CreateTextureFromSurface(rs.render_sdl_renderer, sr);
 
         Redactor_UseArgs(&rs, argc, argv);
         Redactor_PrintMeta(&rs);
