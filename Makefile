@@ -5,15 +5,15 @@ TEST_HEADERS = $(shell echo src/*.h) $(shell echo tests/*.h)
 OBJECTS = $(FILES:.c=.o)
 TEST_OBJECTS = $(TEST_FILES:.c=.o) 
 LDFLAGS = -lSDL2 -lSDL2_ttf -lm -lc
-OPTFLAGS = -g -fsanitize=address -Wall
-ASAN = -lasan
+OPTFLAGS = -fsanitize=address -Wall -g
+ASAN = -lasan 
 EXECUTABLE = ./bin/redactor
 TEST_EXECUTABLE = ./bin/test
 
 all: $(SOURCES) $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	clang $(ASAN) $(LDFLAGS) $(OBJECTS) -o $@ 
+	cc $(ASAN) $(OPTFLAGS) $(LDFLAGS) $(OBJECTS) -o $@ 
 
 # NOTE: This rebuilds the entire project when header is changed!
 %.o: %.c $(HEADERS) $(TEST_HEADERS)
@@ -23,7 +23,7 @@ test: $(TEST_SOURCES) $(TEST_EXECUTABLE)
 	./bin/test
 
 $(TEST_EXECUTABLE): $(TEST_OBJECTS)
-	clang $(ASAN) $(LDFLAGS) $(TEST_OBJECTS) -o $@
+	cc $(ASAN) $(OPTFLAGS) $(LDFLAGS) $(TEST_OBJECTS) -o $@
 
 run: all
 	./bin/redactor 

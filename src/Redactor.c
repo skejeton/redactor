@@ -26,6 +26,8 @@
 #include <libgen.h>
 #endif
 
+#include "Unicode.h"
+
 // Define macros here
 #define DieErr(...) do {fprintf(stderr, __VA_ARGS__); exit(-1);} while (0)
 
@@ -302,15 +304,16 @@ void Redactor_End(Redactor *rs)
 
 int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 {
-        int y_delta = 0;
+        int y_delta = 0, c;
+        
 
-        for (int i = 0; text[i]; ++i) {
-                if (i < 0 || i >= 256) {
+        while (c = Uni_Utf8_NextVeryBad(&text)) {
+                if (c < 0 || c >= 256) {
                         continue;
                         // TODO: Print invalid char code
                 }
 
-                SDL_Rect src = rs->render_font_ascii_chunk.glyphs[(unsigned char)text[i]];
+                SDL_Rect src = rs->render_font_ascii_chunk.glyphs[c];
                 SDL_RenderCopy(rs->render_sdl_renderer, rs->render_font_ascii_chunk.atlas, &src, &(SDL_Rect){x, y, src.w, src.h});
                 y_delta = src.h;
                 x += src.w;
