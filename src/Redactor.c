@@ -157,7 +157,7 @@ void Redactor_PrintMeta(Redactor *rs)
 
 void Redactor_PackAsciiCharTab(Redactor *rs)
 {
-        int sfw = 300, sfh = 300, x = 0, y = 0, maxh = 0, padding = 1;
+        int sfw = 300, sfh = 300, x = 0, y = 0, maxh = 0, padding = 0;
         SDL_Surface *dsf = SDL_CreateRGBSurface(0, sfw, sfh, 32, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
         SDL_SetSurfaceBlendMode(dsf, SDL_BLENDMODE_BLEND);
         SDL_FillRect(dsf, NULL, SDL_MapRGBA(dsf->format, 0, 0, 0, 255));
@@ -189,7 +189,9 @@ void Redactor_PackAsciiCharTab(Redactor *rs)
                                 maxh = chsfh;
                         }
 
-                        SDL_BlitSurface(chsf, &(SDL_Rect){0, 0, chsf->w, chsf->h}, dsf, &(SDL_Rect){x+padding, y+padding, chsfw, chsfh});
+                        SDL_Rect dest = (SDL_Rect){x+padding, y+padding, chsf->w, chsf->h};
+                        rs->render_font_ascii_chunk.glyphs[i] = dest;
+                        SDL_BlitSurface(chsf, &(SDL_Rect){0, 0, chsf->w, chsf->h}, dsf, &dest);
                         x += chsfw;
 
                         SDL_FreeSurface(chsf);
@@ -300,25 +302,19 @@ void Redactor_End(Redactor *rs)
 
 int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 {
-        SDL_Surface *text_surface = TTF_RenderUTF8_Blended(rs->render_sdl_font_handle, text, (SDL_Color){255, 255, 255, 255});
-        if (text_surface == NULL) {
-                return 0; // TODO: Log failed text allocation
+        int y_delta = 0;
+
+        for (int i = 0; text[i]; ++i) {
+                if (i < 0 || i >= 256) {
+                        continue;
+                        // TODO: Print invalid char code
+                }
+
+                SDL_Rect src = rs->render_font_ascii_chunk.glyphs[(unsigned char)text[i]];
+                SDL_RenderCopy(rs->render_sdl_renderer, rs->render_font_ascii_chunk.atlas, &src, &(SDL_Rect){x, y, src.w, src.h});
+                y_delta = src.h;
+                x += src.w;
         }
-
-        SDL_Texture *text_texture = SDL_CreateTextureFromSurface(rs->render_sdl_renderer, text_surface);
-        if (text_texture == NULL) {
-                SDL_FreeSurface(text_surface);
-                return 0; // TODO: Log failed texture allocation
-        }
-
-        int y_delta = text_surface->h;
-
-        // -- draw
-        SDL_RenderCopy(rs->render_sdl_renderer, text_texture, NULL, &(SDL_Rect){x, y, text_surface->w, text_surface->h});
-
-        // -- free
-        SDL_DestroyTexture(text_texture);
-        SDL_FreeSurface(text_surface);
 
         return y_delta;
 }
@@ -426,7 +422,7 @@ void Redactor_Cycle(Redactor *rs)
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
         Redactor_DrawDocument(rs);
-        Redactor_DrawTextureViewer(rs, rs->render_font_ascii_chunk.atlas);
+       // Redactor_DrawTextureViewer(rs, rs->render_font_ascii_chunk.atlas);
         
         SDL_RenderPresent(rs->render_sdl_renderer);
 }
