@@ -40,6 +40,7 @@ typedef struct {
         SDL_Texture *atlas;
 } GlyphChunk;
 
+
 #define Bgm_Tiled       1<<0
 
 typedef struct {
@@ -61,7 +62,7 @@ struct {
         char         *program_dataPath;
         bool          program_running;
 
-        GlyphChunk    render_font_ascii_chunk;
+        GlyphChunk   *render_font_chunks[1024];
         SDL_Window   *render_sdl_window;
         SDL_Renderer *render_sdl_renderer;
         TTF_Font     *render_sdl_font_handle;
@@ -157,17 +158,18 @@ void Redactor_PrintMeta(Redactor *rs)
         printf("|-- end redactor meta ---------\n");
 }
 
-void Redactor_PackAsciiCharTab(Redactor *rs)
+void Redactor_PackCharTab(Redactor *rs, int page)
 {
+
         int sfw = 300, sfh = 300, x = 0, y = 0, maxh = 0, padding = 0;
         SDL_Surface *dsf = SDL_CreateRGBSurface(0, sfw, sfh, 32, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
         SDL_SetSurfaceBlendMode(dsf, SDL_BLENDMODE_BLEND);
         SDL_FillRect(dsf, NULL, SDL_MapRGBA(dsf->format, 0, 0, 0, 255));
 
-        
+        rs->render_font_chunks[page] = calloc(sizeof(GlyphChunk), 1);
 
         for (int i = 0; i < 256; ++i) {
-                SDL_Surface *chsf = TTF_RenderGlyph32_Blended(rs->render_sdl_font_handle, i, (SDL_Color){255, 255, 255, 255});
+                SDL_Surface *chsf = TTF_RenderGlyph32_Blended(rs->render_sdl_font_handle, i+page*256, (SDL_Color){255, 255, 255, 255});
         
                 if (chsf) {
                         // NOTE: Destination only
@@ -192,7 +194,7 @@ void Redactor_PackAsciiCharTab(Redactor *rs)
                         }
 
                         SDL_Rect dest = (SDL_Rect){x+padding, y+padding, chsf->w, chsf->h};
-                        rs->render_font_ascii_chunk.glyphs[i] = dest;
+                        rs->render_font_chunks[page]->glyphs[i] = dest;
                         SDL_BlitSurface(chsf, &(SDL_Rect){0, 0, chsf->w, chsf->h}, dsf, &dest);
                         x += chsfw;
 
@@ -200,7 +202,7 @@ void Redactor_PackAsciiCharTab(Redactor *rs)
                 }
         }
 
-        rs->render_font_ascii_chunk.atlas = SDL_CreateTextureFromSurface(rs->render_sdl_renderer, dsf);
+        rs->render_font_chunks[page]->atlas = SDL_CreateTextureFromSurface(rs->render_sdl_renderer, dsf);
         SDL_FreeSurface(dsf);
 }
 
@@ -255,7 +257,6 @@ void Redactor_Init(Redactor *rs)
         rs->toy_textureViewer_bg.bgm_flags = 1;
 
         // -- Misc
-        Redactor_PackAsciiCharTab(rs);
 }
 
 void Redactor_UseArgs(Redactor *rs, int argc, char *argv[])
@@ -292,7 +293,11 @@ void Redactor_End(Redactor *rs)
 
         TTF_CloseFont(rs->render_sdl_font_handle);
         SDL_DestroyTexture(rs->toy_textureViewer_bg.texture);
-        SDL_DestroyTexture(rs->render_font_ascii_chunk.atlas);
+        for (int i = 0; i < 1024; ++i) 
+                if (rs->render_font_chunks[i]) {
+                        SDL_DestroyTexture(rs->render_font_chunks[i]->atlas);
+                        free(rs->render_font_chunks[i]);
+                }
         SDL_DestroyRenderer(rs->render_sdl_renderer);
         SDL_DestroyWindow(rs->render_sdl_window); 
         fclose(rs->file_handle);
@@ -308,13 +313,19 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
         
 
         while (c = Uni_Utf8_NextVeryBad(&text)) {
-                if (c < 0 || c >= 256) {
+                // NOTE: Prevent out of bounds
+                if (c < 0 || c >= (256*1024)) {
                         continue;
-                        // TODO: Print invalid char code
                 }
 
-                SDL_Rect src = rs->render_font_ascii_chunk.glyphs[c];
-                SDL_RenderCopy(rs->render_sdl_renderer, rs->render_font_ascii_chunk.atlas, &src, &(SDL_Rect){x, y, src.w, src.h});
+                if (rs->render_font_chunks[c / 256] == NULL) {
+                        Redactor_PackCharTab(rs, c / 256);
+                }
+
+                GlyphChunk *chunk = rs->render_font_chunks[c / 256];
+
+                SDL_Rect src = chunk->glyphs[c%256];
+                SDL_RenderCopy(rs->render_sdl_renderer, chunk->atlas, &src, &(SDL_Rect){x, y, src.w, src.h});
                 y_delta = src.h;
                 x += src.w;
         }
@@ -425,7 +436,11 @@ void Redactor_Cycle(Redactor *rs)
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
         Redactor_DrawDocument(rs);
-       // Redactor_DrawTextureViewer(rs, rs->render_font_ascii_chunk.atlas);
+        /*
+        if (rs->render_font_chunks[4]) {
+                Redactor_DrawTextureViewer(rs, rs->render_font_chunks[4]->atlas);
+        }
+        */
         
         SDL_RenderPresent(rs->render_sdl_renderer);
 }

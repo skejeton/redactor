@@ -1,4 +1,5 @@
 Hello world
 Привет мир
+こんにちは世界
 Hej världen
 s(0,
