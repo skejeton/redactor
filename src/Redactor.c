@@ -71,6 +71,7 @@ struct {
         const char   *file_name;
         FILE         *file_handle;
         char         *file_data;
+        int           file_cursor_pos;
 }
 typedef Redactor;
 
@@ -309,9 +310,7 @@ void Redactor_End(Redactor *rs)
 
 int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 {
-        int y_delta = 0, c;
-        
-
+        int c;
         while (c = Uni_Utf8_NextVeryBad(&text)) {
                 // NOTE: Prevent out of bounds
                 if (c < 0 || c >= (256*1024)) {
@@ -326,11 +325,46 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 
                 SDL_Rect src = chunk->glyphs[c%256];
                 SDL_RenderCopy(rs->render_sdl_renderer, chunk->atlas, &src, &(SDL_Rect){x, y, src.w, src.h});
-                y_delta = src.h;
                 x += src.w;
         }
 
-        return y_delta;
+        // FIXME: This is a meh way to get line height
+        return rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0;
+}
+
+void Redactor_DrawCursor(Redactor *rs) 
+{
+        int pos = rs->file_cursor_pos;
+        
+        int x = 0, y = 0;
+        // FIXME: This is a meh way to get line height
+        int h = rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0;
+
+        const char *buffer = rs->file_data;
+        int c, i = 0;
+
+        while (c = Uni_Utf8_NextVeryBad(&buffer)) {
+                // NOTE: Prevent out of bounds
+                if (c < 0 || c >= (256*1024)) {
+                        continue;
+                }
+
+                if (i == pos) {
+                        break;
+                }
+
+                if (c == '\n') {
+                        x = 0;
+                        y += h;
+                } else {
+                        x += rs->render_font_chunks[c / 256]->glyphs[c % 256].w;
+                }
+
+                i++;
+        }
+        
+        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(rs->render_sdl_renderer, &(SDL_Rect){x, y, 2, h});
 }
 
 void Redactor_DrawDocument(Redactor *rs)
@@ -426,6 +460,16 @@ void Redactor_HandleEvents(Redactor *rs)
                 case SDL_MOUSEWHEEL:
                         rs->toy_textureViewer_scale += event.wheel.y/10.0;
                         break;
+                case SDL_KEYDOWN:
+                        switch (event.key.keysym.scancode) {
+                        case SDL_SCANCODE_LEFT:
+                                if (rs->file_cursor_pos > 0)
+                                        rs->file_cursor_pos -= 1;
+                                break;
+                        case SDL_SCANCODE_RIGHT:
+                                rs->file_cursor_pos += 1;
+                                break;
+                        }
                 }
         }
 }
@@ -436,9 +480,10 @@ void Redactor_Cycle(Redactor *rs)
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
         Redactor_DrawDocument(rs);
+        Redactor_DrawCursor(rs);
         /*
-        if (rs->render_font_chunks[4]) {
-                Redactor_DrawTextureViewer(rs, rs->render_font_chunks[4]->atlas);
+        if (rs->render_font_chunks[117]) {
+                Redactor_DrawTextureViewer(rs, rs->render_font_chunks[117]->atlas);
         }
         */
         
