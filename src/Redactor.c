@@ -445,8 +445,41 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
         SDL_RenderCopy(rs->render_sdl_renderer, texture, NULL, &(SDL_Rect){tex_pos_x, tex_pos_y, texture_w, texture_h});
 }
 
-// -- control
+// -- buffer
 
+void Redactor_InsertStringUTF8(Redactor *rs, const char *string)
+{
+        // FIXME: Inefficent
+        int new_length = strlen(rs->file_data)+strlen(string);
+        
+        char *new_data_start = malloc(sizeof(char) * (new_length + 1));
+        char *new_data = new_data_start;
+        const char *utf8_buffer_iter = rs->file_data;
+        int file_cursor_pos_byte = 0;
+
+        // --find cursor
+        for (int i = 0; i != rs->file_cursor_pos && Uni_Utf8_NextVeryBad(&utf8_buffer_iter); ++i)
+                ;
+        file_cursor_pos_byte = utf8_buffer_iter - rs->file_data;
+
+        // --before
+        for (int i = 0; i < file_cursor_pos_byte; ++i)
+                *new_data++ = rs->file_data[i];
+        // --mid
+        for (int i = 0; string[i]; ++i)
+                *new_data++ = string[i];
+        // --after
+        for (int i = file_cursor_pos_byte; rs->file_data[i]; ++i)
+                *new_data++ = rs->file_data[i];
+
+        *new_data = 0;
+
+        free(rs->file_data);
+        rs->file_cursor_pos += Uni_Utf8_Strlen(string);
+        rs->file_data = new_data_start;
+}
+
+// -- control
 
 void Redactor_HandleEvents(Redactor *rs)
 {
@@ -460,6 +493,9 @@ void Redactor_HandleEvents(Redactor *rs)
                 case SDL_MOUSEWHEEL:
                         rs->toy_textureViewer_scale += event.wheel.y/10.0;
                         break;
+                case SDL_TEXTINPUT:
+                        Redactor_InsertStringUTF8(rs, event.text.text);
+                        break;
                 case SDL_KEYDOWN:
                         switch (event.key.keysym.scancode) {
                         case SDL_SCANCODE_LEFT:
@@ -467,9 +503,13 @@ void Redactor_HandleEvents(Redactor *rs)
                                         rs->file_cursor_pos -= 1;
                                 break;
                         case SDL_SCANCODE_RIGHT:
-                                rs->file_cursor_pos += 1;
+                                // NOTE: Check if at the end of file
+                                // FIXME: Inefficent
+                                if (rs->file_cursor_pos != Uni_Utf8_Strlen(rs->file_data))
+                                        rs->file_cursor_pos += 1;
                                 break;
                         }
+                        break;
                 }
         }
 }

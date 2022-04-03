@@ -5,7 +5,6 @@ static inline int Uni_Utf8_RuneLen(const char *s_)
         return *s == 0 ? 0 : clas[*s>>3];
 }
 
-
 static inline int Uni_Utf8_NextVeryBad(const char **s_)
 {
         const static int clas[32] = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5 };
@@ -43,4 +42,13 @@ static inline int Uni_Utf8_NextVeryBad(const char **s_)
         }
         *s_ = (char*)(s+!!c); 
         return c;
+}
+
+// NOTE: You probably don't want to use this
+static inline int Uni_Utf8_Strlen(const char *s)
+{
+        int i = 0;
+        while (Uni_Utf8_NextVeryBad(&s))
+                ++i;
+        return i;
 }
