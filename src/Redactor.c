@@ -449,6 +449,8 @@ void Redactor_Init(Redactor *rs)
         if (!rs->render_sdl_font_handle) {
                 DieErr("Fatal: Can not font: %s\n", TTF_GetError());
         }
+        // NOTE: ASCII table must be pre-mapped
+        Redactor_PackCharTab(rs, 0);
 
         // -- Init values
         rs->program_running = true;
@@ -598,15 +600,12 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
                 col += 1;
         }
         
-        return (SDL_Rect){x, y, 2, h};
+        return (SDL_Rect){rs->render_scroll.x+x, rs->render_scroll.y+y, 2, h};
 }
 
 void Redactor_DrawCursor(Redactor *rs) 
 {
         SDL_Rect cursor_rect = Redactor_GetCursorRect(rs);
-
-        cursor_rect.x += rs->render_scroll.x;
-        cursor_rect.y += rs->render_scroll.y;
 
         if (cursor_rect.y < 0) {
                 rs->render_scroll.y -= cursor_rect.y;
@@ -615,9 +614,6 @@ void Redactor_DrawCursor(Redactor *rs)
                 rs->render_scroll.y -= (cursor_rect.y + cursor_rect.h) - rs->render_window_size.y;
         }
         cursor_rect = Redactor_GetCursorRect(rs);
-        cursor_rect.x += rs->render_scroll.x;
-        cursor_rect.y += rs->render_scroll.y;
-
 
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 255, 255, 255, 255);
         SDL_RenderFillRect(rs->render_sdl_renderer, &cursor_rect);
