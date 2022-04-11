@@ -57,8 +57,8 @@ typedef struct {
 } Line;
 
 typedef struct {
-        size_t line;
-        size_t column;
+        int32_t line;
+        int32_t column;
 } Cursor;
 
 typedef struct {
@@ -207,15 +207,36 @@ Cursor Redactor_Buffer_MoveCursorColumns(Redactor *rs, Cursor cursor, int col)
                         cursor.line++;
                 }
         }
-        if (column < 0) 
-                column = 0;
-        if (column > rs->file_buffer.lines[cursor.line].text_len)
+        if (column < 0) {
+                column = 0; 
+        } else if (column > rs->file_buffer.lines[cursor.line].text_len) {
                 column = rs->file_buffer.lines[cursor.line].text_len;
+        }
 
         cursor.column = column;
 
 
         return cursor;
+}
+
+
+Cursor Redactor_Buffer_MoveCursor(Redactor *rs, Cursor cursor, int lines, int cols)
+{
+        cursor.line += lines;
+
+        if (cursor.line < 0) {
+                cursor.line = 0;
+        } else if (cursor.line >= rs->file_buffer.lines_len) {
+                cursor.line = rs->file_buffer.lines_len-1;
+        }
+                
+        if (cursor.column < 0) {
+                cursor.column = 0;
+        } else if (cursor.column > rs->file_buffer.lines[cursor.line].text_len) {
+                cursor.column = rs->file_buffer.lines[cursor.line].text_len;
+        }
+
+        return Redactor_Buffer_MoveCursorColumns(rs, cursor, cols);
 }
 
 void Redactor_Buffer_AddLine(Redactor *rs, const char *line)
@@ -566,11 +587,17 @@ void Redactor_HandleEvents(Redactor *rs)
                         break;
                 case SDL_KEYDOWN:
                         switch (event.key.keysym.scancode) {
+                        case SDL_SCANCODE_UP:
+                                rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, -1, 0);
+                                break;
+                        case SDL_SCANCODE_DOWN:
+                                rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, 1, 0);
+                                break;
                         case SDL_SCANCODE_LEFT:
-                                rs->file_cursor = Redactor_Buffer_MoveCursorColumns(rs, rs->file_cursor, -1);
+                                rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, 0, -1);
                                 break;
                         case SDL_SCANCODE_RIGHT:
-                                rs->file_cursor = Redactor_Buffer_MoveCursorColumns(rs, rs->file_cursor, 1);
+                                rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, 0, 1);
                                 break;
                         }
                         break;
