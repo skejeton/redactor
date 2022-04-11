@@ -194,24 +194,25 @@ Cursor Redactor_Buffer_InsertUTF8(Redactor *rs, Cursor cursor, const char *text)
 
 Cursor Redactor_Buffer_MoveCursorColumns(Redactor *rs, Cursor cursor, int col)
 {
-        if (col < 0 && cursor.line > 0 && cursor.column == 0) {
-                cursor.line -= 1;
-                cursor.column = rs->file_buffer.lines[cursor.line].text_len;
-                return cursor;
+        int column = (int)(cursor.column) + col;
+
+        if (column < 0) {
+                while (column < 0 && cursor.line > 0) {
+                        cursor.line--;
+                        column += rs->file_buffer.lines[cursor.line].text_len+1;
+                }
+        } else {
+                while (column > rs->file_buffer.lines[cursor.line].text_len && cursor.line < rs->file_buffer.lines_len-1) {
+                        column -= rs->file_buffer.lines[cursor.line].text_len+1;
+                        cursor.line++;
+                }
         }
-        if (col > 0 && cursor.line < rs->file_buffer.lines_len-1 && cursor.column == rs->file_buffer.lines[cursor.line].text_len) {
-                cursor.line += 1;
-                cursor.column = 0;
-                return cursor;
-        }
-        if (col < 0 && cursor.column > 0) {
-                cursor.column -= 1;
-                return cursor;
-        }
-        if (col > 0 && cursor.column < rs->file_buffer.lines[cursor.line].text_len) {
-                cursor.column += 1;
-                return cursor;
-        }
+        if (column < 0) 
+                column = 0;
+        if (column > rs->file_buffer.lines[cursor.line].text_len)
+                column = rs->file_buffer.lines[cursor.line].text_len;
+
+        cursor.column = column;
 
 
         return cursor;
@@ -278,7 +279,7 @@ void Redactor_PackCharTab(Redactor *rs, int page)
                 SDL_Surface *chsf = TTF_RenderGlyph32_Blended(rs->render_sdl_font_handle, i+page*256, (SDL_Color){255, 255, 255, 255});
         
                 if (chsf) {
-                        // NOTE: Destination only
+                // NOTE: Destination only
                         int chsfw = chsf->w+padding*2;
                         int chsfh = chsf->h+padding*2;
 
@@ -399,6 +400,12 @@ void Redactor_UseArgs(Redactor *rs, int argc, char *argv[])
                         file_str++;
                 }
         }
+
+        // NOTE: If file is empty the first line might not be 
+        if (*file_str_init == 0) {
+                Redactor_Buffer_AddLine(rs, "");
+        }
+
 
         free(file_str_init);
 }
@@ -579,6 +586,7 @@ void Redactor_Cycle(Redactor *rs)
         Redactor_DrawBg(rs, &rs->toy_textureViewer_bg);
         Redactor_DrawDocument(rs);
         Redactor_DrawCursor(rs);
+        //printf("%d %d\n", rs->file_cursor.line, rs->file_cursor.column);
         /*
         if (rs->render_font_chunks[117]) {
                 Redactor_DrawTextureViewer(rs, rs->render_font_chunks[117]->atlas);
