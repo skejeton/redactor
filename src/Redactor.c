@@ -192,6 +192,40 @@ Cursor Redactor_Buffer_InsertUTF8(Redactor *rs, Cursor cursor, const char *text)
         return cursor;
 }
 
+Cursor Redactor_Buffer_RemoveCharacter(Redactor *rs, Cursor under)
+{
+        if (under.column == 0) {
+                if (under.line > 0) {
+                        under.line--;
+                        // TODO: Inline this with a specialized version
+                        Line *line = &rs->file_buffer.lines[under.line];
+                        under.column = line->text_len;
+                        Redactor_Buffer_InsertUTF8(rs, under, rs->file_buffer.lines[under.line+1].text);
+
+                        free(rs->file_buffer.lines[under.line+1].text);
+                        memmove(rs->file_buffer.lines+under.line+1, rs->file_buffer.lines+under.line+2, sizeof(*rs->file_buffer.lines) * (rs->file_buffer.lines_len - (under.line+2)));
+                        rs->file_buffer.lines_len -= 1;
+                }
+        } else {
+                Line *line = &rs->file_buffer.lines[under.line];
+
+                const char *line_iter = line->text;
+                // NOTE: character before cursor
+                const char *p_line_iter = line->text;
+                
+                // --find cursor
+                for (int i = 0; i != under.column && Uni_Utf8_NextVeryBad((p_line_iter = line_iter, &line_iter)); ++i)
+                        ;
+
+                memmove(line->text + (p_line_iter - line->text), line->text + (line_iter - line->text), sizeof(char) * (line->text_size - (line_iter - line->text) + 1));
+
+                line->text_len -= 1;
+
+                under.column -= 1;
+        }
+        return under;
+}
+
 Cursor Redactor_Buffer_MoveCursorColumns(Redactor *rs, Cursor cursor, int col)
 {
         int column = (int)(cursor.column) + col;
@@ -239,6 +273,7 @@ Cursor Redactor_Buffer_MoveCursor(Redactor *rs, Cursor cursor, int lines, int co
         return Redactor_Buffer_MoveCursorColumns(rs, cursor, cols);
 }
 
+
 void Redactor_Buffer_AddLine(Redactor *rs, const char *line)
 {
         if (rs->file_buffer.lines_len % 1024 == 0) {
@@ -251,6 +286,44 @@ void Redactor_Buffer_AddLine(Redactor *rs, const char *line)
         rs->file_buffer.lines[rs->file_buffer.lines_len  ].text_len  = Uni_Utf8_Strlen(text);
         rs->file_buffer.lines[rs->file_buffer.lines_len  ].text_size = text_size;
         rs->file_buffer.lines[rs->file_buffer.lines_len++].text      = text;
+}
+
+void Redactor_Buffer_AddEmptyLineAt(Redactor *rs, Cursor under)
+{
+        if (rs->file_buffer.lines_len % 1024 == 0) {
+                rs->file_buffer.lines = realloc(rs->file_buffer.lines, sizeof(*rs->file_buffer.lines) * (rs->file_buffer.lines_len + 1024));
+        }
+        
+        memmove(rs->file_buffer.lines+under.line+1, rs->file_buffer.lines+under.line, sizeof(*rs->file_buffer.lines) * (rs->file_buffer.lines_len-under.line));
+        char *empty = malloc(1);
+        empty[0] = 0;
+
+        rs->file_buffer.lines[under.line].text_len = 0;
+        rs->file_buffer.lines[under.line].text_size = 0;
+        rs->file_buffer.lines[under.line].text = empty;
+        rs->file_buffer.lines_len++;
+}
+
+Cursor Redactor_Buffer_SplitLineAt(Redactor *rs, Cursor under)
+{
+        Line *line = &rs->file_buffer.lines[under.line];
+        line->text_len = under.column;
+
+        char *line_text = line->text;
+        const char *line_iter = line->text;
+        // NOTE: character before cursor
+        
+        // --find cursor
+        for (int i = 0; i != under.column && Uni_Utf8_NextVeryBad(&line_iter); ++i)
+                ;
+        line->text_size = line_iter-line->text;
+
+        under.line += 1;
+        under.column = 0;
+        Redactor_Buffer_AddEmptyLineAt(rs, under);
+        Redactor_Buffer_InsertUTF8(rs, under, line_iter);
+        line_text[line_iter-line_text] = 0;
+        return under;
 }
 
 void Redactor_Buffer_Deinit(Redactor *rs)
@@ -587,6 +660,12 @@ void Redactor_HandleEvents(Redactor *rs)
                         break;
                 case SDL_KEYDOWN:
                         switch (event.key.keysym.scancode) {
+                        case SDL_SCANCODE_RETURN:
+                                rs->file_cursor = Redactor_Buffer_SplitLineAt(rs, rs->file_cursor);
+                                break;
+                        case SDL_SCANCODE_BACKSPACE:
+                                rs->file_cursor = Redactor_Buffer_RemoveCharacter(rs, rs->file_cursor);
+                                break;
                         case SDL_SCANCODE_UP:
                                 rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, -1, 0);
                                 break;
