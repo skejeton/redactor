@@ -367,7 +367,7 @@ void Redactor_PackCharTab(Redactor *rs, int page)
         int sfw = 300, sfh = 300, x = 0, y = 0, maxh = 0, padding = 0;
         SDL_Surface *dsf = SDL_CreateRGBSurface(0, sfw, sfh, 32, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
         SDL_SetSurfaceBlendMode(dsf, SDL_BLENDMODE_BLEND);
-        SDL_FillRect(dsf, NULL, SDL_MapRGBA(dsf->format, 0, 0, 0, 255));
+        SDL_FillRect(dsf, NULL, SDL_MapRGBA(dsf->format, 0, 0, 0, 0));
 
         rs->render_font_chunks[page] = calloc(sizeof(GlyphChunk), 1);
 
@@ -406,6 +406,7 @@ void Redactor_PackCharTab(Redactor *rs, int page)
         }
 
         rs->render_font_chunks[page]->atlas = SDL_CreateTextureFromSurface(rs->render_sdl_renderer, dsf);
+        SDL_SetTextureBlendMode(rs->render_font_chunks[page]->atlas, SDL_BLENDMODE_BLEND);
         SDL_FreeSurface(dsf);
 }
 
@@ -545,7 +546,7 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 
                 if (c == '\t') {
                         x += rs->render_font_chunks[0]->glyphs[' '].w * (8 - (col % 8));
-                        col += 8;
+                        col += (8 - (col % 8));
                         continue;
                 }
 
@@ -589,7 +590,7 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
 
                 if (c == '\t') {
                         x += rs->render_font_chunks[0]->glyphs[' '].w * (8 - (col % 8));
-                        col += 8;
+                        col += (8 - (col % 8));
                         continue;
                 }
 
