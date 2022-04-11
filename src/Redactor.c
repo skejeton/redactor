@@ -48,6 +48,24 @@ typedef struct {
         int bgm_flags;
 } Background;
 
+typedef struct {
+        char *text;
+        // NOTE: text_size is the size in bytes
+        size_t text_size;
+        // NOTE: text_len is the size in runes
+        size_t text_len;
+} Line;
+
+typedef struct {
+        size_t line;
+        size_t column;
+} Cursor;
+
+typedef struct {
+        Line *lines;
+        size_t lines_len;
+} Buffer;
+
 struct {
         Background    toy_textureViewer_bg;
         float         toy_textureViewer_scale;
@@ -70,8 +88,8 @@ struct {
         bool          file_is_new;
         const char   *file_name;
         FILE         *file_handle;
-        char         *file_data;
-        int           file_cursor_pos;
+        Buffer        file_buffer;
+        Cursor        file_cursor;
 }
 typedef Redactor;
 
@@ -136,6 +154,90 @@ char *Util_ConcatPaths(const char *path_a, const char *path_b)
         return s;
 }
 
+// -- buffer
+
+Cursor Redactor_Buffer_InsertUTF8(Redactor *rs, Cursor cursor, const char *text)
+{
+        Line *line = &rs->file_buffer.lines[cursor.line];
+        size_t new_size = strlen(text) + line->text_size;
+        char *new_line_start = malloc(sizeof(char) * (new_size + 1));
+        char *new_line = new_line_start;
+        int cursor_pos_byte = 0;
+        int unilen = Uni_Utf8_Strlen(text);
+        const char *line_iter = line->text;
+
+        // --find cursor
+        for (int i = 0; i != cursor.column && Uni_Utf8_NextVeryBad(&line_iter); ++i)
+                ;
+        cursor_pos_byte = line_iter - line->text;
+
+        // --before
+        for (int i = 0; i < cursor_pos_byte; ++i)
+                *new_line++ = line->text[i];
+        // --mid
+        for (int i = 0; text[i]; ++i)
+                *new_line++ = text[i];
+        // --after
+        for (int i = cursor_pos_byte; line->text[i]; ++i)
+                *new_line++ = line->text[i];
+
+        *new_line = 0;
+
+        free(line->text);
+        line->text = new_line_start;
+        line->text_size = new_size;
+        line->text_len += unilen;
+
+        cursor.column += unilen;
+        return cursor;
+}
+
+Cursor Redactor_Buffer_MoveCursorColumns(Redactor *rs, Cursor cursor, int col)
+{
+        if (col < 0 && cursor.line > 0 && cursor.column == 0) {
+                cursor.line -= 1;
+                cursor.column = rs->file_buffer.lines[cursor.line].text_len;
+                return cursor;
+        }
+        if (col > 0 && cursor.line < rs->file_buffer.lines_len-1 && cursor.column == rs->file_buffer.lines[cursor.line].text_len) {
+                cursor.line += 1;
+                cursor.column = 0;
+                return cursor;
+        }
+        if (col < 0 && cursor.column > 0) {
+                cursor.column -= 1;
+                return cursor;
+        }
+        if (col > 0 && cursor.column < rs->file_buffer.lines[cursor.line].text_len) {
+                cursor.column += 1;
+                return cursor;
+        }
+
+
+        return cursor;
+}
+
+void Redactor_Buffer_AddLine(Redactor *rs, const char *line)
+{
+        if (rs->file_buffer.lines_len % 1024 == 0) {
+                rs->file_buffer.lines = realloc(rs->file_buffer.lines, sizeof(*rs->file_buffer.lines) * (rs->file_buffer.lines_len + 1024));
+        }
+        
+        size_t text_size = strlen(line);
+        char *text = strcpy(malloc(text_size+1), line);
+
+        rs->file_buffer.lines[rs->file_buffer.lines_len  ].text_len  = Uni_Utf8_Strlen(text);
+        rs->file_buffer.lines[rs->file_buffer.lines_len  ].text_size = text_size;
+        rs->file_buffer.lines[rs->file_buffer.lines_len++].text      = text;
+}
+
+void Redactor_Buffer_Deinit(Redactor *rs)
+{
+        for (int i = 0; i < rs->file_buffer.lines_len; ++i) {
+                free(rs->file_buffer.lines[i].text);
+        }
+        free(rs->file_buffer.lines);
+}
 
 // -- util
 
@@ -155,7 +257,10 @@ void Redactor_PrintMeta(Redactor *rs)
         printf("|   program_dataPath     | %s\n", rs->program_dataPath);
         printf("|   file_name            | %s\n", rs->file_name);
         printf("|   file_is_new          | %d\n", rs->file_is_new);
-        printf("|-- file_data -----------------\n%s\n", rs->file_data);
+        printf("|-- file_data -----------------\n");
+        for (int i = 0; i < rs->file_buffer.lines_len; ++i) {
+                printf("%s\n", rs->file_buffer.lines[i].text);
+        }
         printf("|-- end redactor meta ---------\n");
 }
 
@@ -278,14 +383,30 @@ void Redactor_UseArgs(Redactor *rs, int argc, char *argv[])
                         rs->file_is_new = true;
                 }
         }
-        rs->file_data = Util_ReadFileStr(rs->file_handle);
-        
+
+        char *file_str_init = Util_ReadFileStr(rs->file_handle);
+        char *file_str = file_str_init;
+
+        while (*file_str) {
+                char *line = file_str;
+                while (*file_str && *file_str != '\n') {
+                        file_str++;
+                }
+                char nnul = *file_str;
+                *file_str = 0;
+                Redactor_Buffer_AddLine(rs, line);
+                if (nnul) {
+                        file_str++;
+                }
+        }
+
+        free(file_str_init);
 }
 
 void Redactor_End(Redactor *rs)
 {
         // NOTE: Allocated in UseArgs
-        free(rs->file_data);
+        Redactor_Buffer_Deinit(rs);
         // NOTE: Allocated in GetTempResPath
         free(rs->temp_respath);
         // NOTE: Allocated in SetupPaths
@@ -334,33 +455,26 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 
 void Redactor_DrawCursor(Redactor *rs) 
 {
-        int pos = rs->file_cursor_pos;
+        Cursor cursor = rs->file_cursor;
         
         int x = 0, y = 0;
         // FIXME: This is a meh way to get line height
         int h = rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0;
+        y = cursor.line * h;
 
-        const char *buffer = rs->file_data;
-        int c, i = 0;
+        const char *line = rs->file_buffer.lines[cursor.line].text;
 
-        while (c = Uni_Utf8_NextVeryBad(&buffer)) {
+        for (int c, i = 0; (c = Uni_Utf8_NextVeryBad(&line)); ++i) {
+                if (i == cursor.column) {
+                        break;
+                }
+
                 // NOTE: Prevent out of bounds
                 if (c < 0 || c >= (256*1024)) {
                         continue;
                 }
 
-                if (i == pos) {
-                        break;
-                }
-
-                if (c == '\n') {
-                        x = 0;
-                        y += h;
-                } else {
-                        x += rs->render_font_chunks[c / 256]->glyphs[c % 256].w;
-                }
-
-                i++;
+                x += rs->render_font_chunks[c / 256]->glyphs[c % 256].w;
         }
         
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 255, 255, 255, 255);
@@ -369,29 +483,10 @@ void Redactor_DrawCursor(Redactor *rs)
 
 void Redactor_DrawDocument(Redactor *rs)
 {
-        char *buffer = rs->file_data;
         int y = 0;
-        while (*buffer) {
-                const char *start = buffer;
-                char c;
-
-                // Step until newline
-                while (*buffer && *buffer != '\n') {
-                        buffer++;
-                }
-
-                c = *buffer;
-                *buffer = 0;
-
-                y += Redactor_DrawText(rs, 0, y, start);
-
-                *buffer = c;
-
-                // NOTE: Skip the newline unless it's null terminator
-                if (*buffer) {
-                        buffer++;
-                }
-
+        for (int i = 0; i < rs->file_buffer.lines_len; ++i) {
+                const char *line = rs->file_buffer.lines[i].text;
+                y += Redactor_DrawText(rs, 0, y, line);
         }
 }
 
@@ -445,40 +540,6 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
         SDL_RenderCopy(rs->render_sdl_renderer, texture, NULL, &(SDL_Rect){tex_pos_x, tex_pos_y, texture_w, texture_h});
 }
 
-// -- buffer
-
-void Redactor_InsertStringUTF8(Redactor *rs, const char *string)
-{
-        // FIXME: Inefficent
-        int new_length = strlen(rs->file_data)+strlen(string);
-        
-        char *new_data_start = malloc(sizeof(char) * (new_length + 1));
-        char *new_data = new_data_start;
-        const char *utf8_buffer_iter = rs->file_data;
-        int file_cursor_pos_byte = 0;
-
-        // --find cursor
-        for (int i = 0; i != rs->file_cursor_pos && Uni_Utf8_NextVeryBad(&utf8_buffer_iter); ++i)
-                ;
-        file_cursor_pos_byte = utf8_buffer_iter - rs->file_data;
-
-        // --before
-        for (int i = 0; i < file_cursor_pos_byte; ++i)
-                *new_data++ = rs->file_data[i];
-        // --mid
-        for (int i = 0; string[i]; ++i)
-                *new_data++ = string[i];
-        // --after
-        for (int i = file_cursor_pos_byte; rs->file_data[i]; ++i)
-                *new_data++ = rs->file_data[i];
-
-        *new_data = 0;
-
-        free(rs->file_data);
-        rs->file_cursor_pos += Uni_Utf8_Strlen(string);
-        rs->file_data = new_data_start;
-}
-
 // -- control
 
 void Redactor_HandleEvents(Redactor *rs)
@@ -494,19 +555,15 @@ void Redactor_HandleEvents(Redactor *rs)
                         rs->toy_textureViewer_scale += event.wheel.y/10.0;
                         break;
                 case SDL_TEXTINPUT:
-                        Redactor_InsertStringUTF8(rs, event.text.text);
+                        rs->file_cursor = Redactor_Buffer_InsertUTF8(rs, rs->file_cursor, event.text.text);
                         break;
                 case SDL_KEYDOWN:
                         switch (event.key.keysym.scancode) {
                         case SDL_SCANCODE_LEFT:
-                                if (rs->file_cursor_pos > 0)
-                                        rs->file_cursor_pos -= 1;
+                                rs->file_cursor = Redactor_Buffer_MoveCursorColumns(rs, rs->file_cursor, -1);
                                 break;
                         case SDL_SCANCODE_RIGHT:
-                                // NOTE: Check if at the end of file
-                                // FIXME: Inefficent
-                                if (rs->file_cursor_pos != Uni_Utf8_Strlen(rs->file_data))
-                                        rs->file_cursor_pos += 1;
+                                rs->file_cursor = Redactor_Buffer_MoveCursorColumns(rs, rs->file_cursor, 1);
                                 break;
                         }
                         break;
@@ -519,6 +576,7 @@ void Redactor_Cycle(Redactor *rs)
         Redactor_HandleEvents(rs);
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
+        Redactor_DrawBg(rs, &rs->toy_textureViewer_bg);
         Redactor_DrawDocument(rs);
         Redactor_DrawCursor(rs);
         /*
