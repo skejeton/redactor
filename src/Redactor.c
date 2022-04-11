@@ -80,6 +80,8 @@ struct {
         char         *program_dataPath;
         bool          program_running;
 
+        SDL_FPoint    render_scroll;
+        SDL_Point     render_window_size;
         GlyphChunk   *render_font_chunks[1024];
         SDL_Window   *render_sdl_window;
         SDL_Renderer *render_sdl_renderer;
@@ -533,9 +535,17 @@ void Redactor_End(Redactor *rs)
 int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 {
         int c;
+        int col = 0;
+
         while (c = Uni_Utf8_NextVeryBad(&text)) {
                 // NOTE: Prevent out of bounds
                 if (c < 0 || c >= (256*1024)) {
+                        continue;
+                }
+
+                if (c == '\t') {
+                        x += rs->render_font_chunks[0]->glyphs[' '].w * (8 - (col % 8));
+                        col += 8;
                         continue;
                 }
 
@@ -548,17 +558,19 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
                 SDL_Rect src = chunk->glyphs[c%256];
                 SDL_RenderCopy(rs->render_sdl_renderer, chunk->atlas, &src, &(SDL_Rect){x, y, src.w, src.h});
                 x += src.w;
+                col++;
         }
 
         // FIXME: This is a meh way to get line height
         return rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0;
 }
 
-void Redactor_DrawCursor(Redactor *rs) 
+SDL_Rect Redactor_GetCursorRect(Redactor *rs)
 {
         Cursor cursor = rs->file_cursor;
         
         int x = 0, y = 0;
+        int col = 0;
         // FIXME: This is a meh way to get line height
         int h = rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0;
         y = cursor.line * h;
@@ -575,11 +587,39 @@ void Redactor_DrawCursor(Redactor *rs)
                         continue;
                 }
 
+                if (c == '\t') {
+                        x += rs->render_font_chunks[0]->glyphs[' '].w * (8 - (col % 8));
+                        col += 8;
+                        continue;
+                }
+
                 x += rs->render_font_chunks[c / 256]->glyphs[c % 256].w;
+                col += 1;
         }
         
+        return (SDL_Rect){x, y, 2, h};
+}
+
+void Redactor_DrawCursor(Redactor *rs) 
+{
+        SDL_Rect cursor_rect = Redactor_GetCursorRect(rs);
+
+        cursor_rect.x += rs->render_scroll.x;
+        cursor_rect.y += rs->render_scroll.y;
+
+        if (cursor_rect.y < 0) {
+                rs->render_scroll.y -= cursor_rect.y;
+        }
+        if ((cursor_rect.y + cursor_rect.h) > rs->render_window_size.y) {
+                rs->render_scroll.y -= (cursor_rect.y + cursor_rect.h) - rs->render_window_size.y;
+        }
+        cursor_rect = Redactor_GetCursorRect(rs);
+        cursor_rect.x += rs->render_scroll.x;
+        cursor_rect.y += rs->render_scroll.y;
+
+
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(rs->render_sdl_renderer, &(SDL_Rect){x, y, 2, h});
+        SDL_RenderFillRect(rs->render_sdl_renderer, &cursor_rect);
 }
 
 void Redactor_DrawDocument(Redactor *rs)
@@ -587,7 +627,7 @@ void Redactor_DrawDocument(Redactor *rs)
         int y = 0;
         for (int i = 0; i < rs->file_buffer.lines_len; ++i) {
                 const char *line = rs->file_buffer.lines[i].text;
-                y += Redactor_DrawText(rs, 0, y, line);
+                y += Redactor_DrawText(rs, rs->render_scroll.x, rs->render_scroll.y+y, line);
         }
 }
 
@@ -660,6 +700,9 @@ void Redactor_HandleEvents(Redactor *rs)
                         break;
                 case SDL_KEYDOWN:
                         switch (event.key.keysym.scancode) {
+                        case SDL_SCANCODE_TAB:
+                                rs->file_cursor = Redactor_Buffer_InsertUTF8(rs, rs->file_cursor, "\t");
+                                break;
                         case SDL_SCANCODE_RETURN:
                                 rs->file_cursor = Redactor_Buffer_SplitLineAt(rs, rs->file_cursor);
                                 break;
@@ -687,6 +730,8 @@ void Redactor_HandleEvents(Redactor *rs)
 void Redactor_Cycle(Redactor *rs)
 {
         Redactor_HandleEvents(rs);
+        
+        SDL_GetWindowSize(rs->render_sdl_window, &rs->render_window_size.x, &rs->render_window_size.y);
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
         Redactor_DrawBg(rs, &rs->toy_textureViewer_bg);
