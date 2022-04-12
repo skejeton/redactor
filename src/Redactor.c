@@ -11,7 +11,6 @@
 #       define Platform_Is_Unknown
 #endif
 
-
 // Put includes here
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -27,73 +26,9 @@
 #endif
 
 #include "Unicode.h"
-
-// Define macros here
-#define DieErr(...) do {fprintf(stderr, __VA_ARGS__); exit(-1);} while (0)
-
-#ifdef  __has_attribute
-// Define attributes here
-#endif
-
-typedef struct {
-        SDL_Rect glyphs[256];
-        SDL_Texture *atlas;
-} GlyphChunk;
+#include "Redactor.h"
 
 
-#define Bgm_Tiled       1<<0
-
-typedef struct {
-        SDL_Texture *texture;
-        int bgm_flags;
-} Background;
-
-typedef struct {
-        char *text;
-        // NOTE: text_size is the size in bytes
-        size_t text_size;
-        // NOTE: text_len is the size in runes
-        size_t text_len;
-} Line;
-
-typedef struct {
-        int32_t line;
-        int32_t column;
-} Cursor;
-
-typedef struct {
-        Line *lines;
-        size_t lines_len;
-} Buffer;
-
-struct {
-        Background    toy_textureViewer_bg;
-        float         toy_textureViewer_scale;
-
-        char         *temp_respath;
-
-        const char   *cfg_program_dataDir;
-        const char   *cfg_font_respath;
-        int           cfg_font_size;
-
-        char         *program_location;
-        char         *program_dataPath;
-        bool          program_running;
-
-        SDL_FPoint    render_scroll;
-        SDL_Point     render_window_size;
-        GlyphChunk   *render_font_chunks[1024];
-        SDL_Window   *render_sdl_window;
-        SDL_Renderer *render_sdl_renderer;
-        TTF_Font     *render_sdl_font_handle;
-
-        bool          file_is_new;
-        const char   *file_name;
-        FILE         *file_handle;
-        Buffer        file_buffer;
-        Cursor        file_cursor;
-}
-typedef Redactor;
 
 char *Util_ReadFileStr(FILE *f)
 {
@@ -521,7 +456,7 @@ void Redactor_End(Redactor *rs)
 
         TTF_CloseFont(rs->render_sdl_font_handle);
         SDL_DestroyTexture(rs->toy_textureViewer_bg.texture);
-        for (int i = 0; i < 1024; ++i) 
+        for (int i = 0; i < Redactor_GlyphmapChunkMax; ++i) 
                 if (rs->render_font_chunks[i]) {
                         SDL_DestroyTexture(rs->render_font_chunks[i]->atlas);
                         free(rs->render_font_chunks[i]);
@@ -542,7 +477,7 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
 
         while (c = Uni_Utf8_NextVeryBad(&text)) {
                 // NOTE: Prevent out of bounds
-                if (c < 0 || c >= (256*1024)) {
+                if (c < 0 || c >= Redactor_GlyphmapGlyphMax) {
                         continue;
                 }
 
@@ -586,7 +521,7 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
                 }
 
                 // NOTE: Prevent out of bounds
-                if (c < 0 || c >= (256*1024)) {
+                if (c < 0 || c >= Redactor_GlyphmapGlyphMax) {
                         continue;
                 }
 
@@ -628,31 +563,6 @@ void Redactor_DrawDocument(Redactor *rs)
         }
 }
 
-void Redactor_DrawBg(Redactor *rs, Background *bg)
-{
-        int ofsx = 0, ofsy = 0, xcount = 0, ycount = 0;
-        int texture_w, texture_h;
-        SDL_QueryTexture(bg->texture, NULL, NULL, &texture_w, &texture_h);
-
-        // NOTE: Zero divide
-        if (texture_w == 0 || texture_h == 0)  {
-                return;
-        }
-
-        if (bg->bgm_flags | Bgm_Tiled) {
-                int screen_w, screen_h;
-                SDL_GetWindowSize(rs->render_sdl_window, &screen_w, &screen_h);
-                xcount = screen_w / texture_w + 2;
-                ycount = screen_h / texture_h + 2;
-        } 
- 
-        for (int x = 0; x < xcount; ++x) {
-                for (int y = 0; y < ycount; ++y) {
-                        SDL_RenderCopy(rs->render_sdl_renderer, bg->texture, NULL, &(SDL_Rect){x*texture_w, y*texture_w, texture_w, texture_h});
-                }
-        }
-}
-
 // NOTE: For debugging
 void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
 {
@@ -668,7 +578,7 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
         tex_pos_y = (screen_h - texture_h) / 2;
 
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 80, 255);
-        Redactor_DrawBg(rs, &rs->toy_textureViewer_bg);
+        Background_Draw(rs, &rs->toy_textureViewer_bg);
         char title[1024];
         snprintf(title, 1024, "Texture viewer | w %d | h %d | s %g", texture_w, texture_h, scale);
 
@@ -731,10 +641,9 @@ void Redactor_Cycle(Redactor *rs)
         SDL_GetWindowSize(rs->render_sdl_window, &rs->render_window_size.x, &rs->render_window_size.y);
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
-        Redactor_DrawBg(rs, &rs->toy_textureViewer_bg);
+        Background_Draw(rs, &rs->toy_textureViewer_bg);
         Redactor_DrawDocument(rs);
         Redactor_DrawCursor(rs);
-        //printf("%d %d\n", rs->file_cursor.line, rs->file_cursor.column);
         /*
         if (rs->render_font_chunks[117]) {
                 Redactor_DrawTextureViewer(rs, rs->render_font_chunks[117]->atlas);
