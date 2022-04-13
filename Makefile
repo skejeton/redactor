@@ -5,28 +5,30 @@ TEST_HEADERS = $(shell echo src/*.h) $(shell echo tests/*.h)
 OBJECTS = $(FILES:.c=.o)
 TEST_OBJECTS = $(TEST_FILES:.c=.o) 
 LDFLAGS = -lSDL2 -lSDL2_ttf -lm -lc
-OPTFLAGS = -g -fsanitize=address -Wall
+CCFLAGS = -g -fsanitize=address -Wall
+#CCFLAGS = -O3 -g -flto
 ASAN = -lasan 
 EXECUTABLE = ./bin/redactor
 TEST_EXECUTABLE = ./bin/test
 
-all: $(SOURCES) $(EXECUTABLE)
+all: $(FILES) $(EXECUTABLE) $(HEADERS) Makefile
 
-$(EXECUTABLE): $(OBJECTS)
-	cc $(ASAN) $(OPTFLAGS) $(LDFLAGS) $(OBJECTS) -o $@ 
+$(EXECUTABLE): $(OBJECTS) 
+	$(CC) $(ASAN) $(CCFLAGS) $(LDFLAGS) $(OBJECTS) -o $@ 
 
 # NOTE: This rebuilds the entire project when header is changed!
-%.o: %.c $(HEADERS) $(TEST_HEADERS)
-	cc $(OPTFLAGS) -c $< -o $@
+%.o: %.c
+	$(CC) $(CCFLAGS) -c $< -o $@
 
-test: $(TEST_SOURCES) $(TEST_EXECUTABLE)
+test: $(TEST_SOURCES) $(TEST_EXECUTABLE) $(HEADERS) $(TEST_HEADERS) Makefile
 	./bin/test
 
 $(TEST_EXECUTABLE): $(TEST_OBJECTS)
-	cc $(ASAN) $(OPTFLAGS) $(LDFLAGS) $(TEST_OBJECTS) -o $@
+	$(CC) $(ASAN) $(CCFLAGS) $(LDFLAGS) $(TEST_OBJECTS) -o $@
 
 run: all
 	./bin/redactor 
 
 clean:
-	rm $(OBJECTS)
+	@touch $(OBJECTS)
+	rm $(OBJECTS) 

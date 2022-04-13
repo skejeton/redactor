@@ -1,15 +1,3 @@
-// Setup platform macros
-#if   defined(__linux__)
-#       define Platform_Is_Linux
-#elif defined(_WIN32)
-#       define Platform_Is_Windows
-#elif defined(__APPLE__) || defined(__MACH__)
-#       define Platform_Is_Darwin
-#elif defined(__unix__)
-#       define Platform_Is_Unix
-#else
-#       define Platform_Is_Unknown
-#endif
 
 // Put includes here
 #include <SDL2/SDL.h>
@@ -20,76 +8,13 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#ifdef Platform_Is_Linux
-#include <unistd.h>
-#include <libgen.h>
-#endif
+
 
 #include "Unicode.h"
 #include "Redactor.h"
 
 
 
-char *Util_ReadFileStr(FILE *f)
-{
-        char *s;
-        fseek(f, 0, SEEK_END);
-        size_t size = ftell(f);
-        fseek(f, 0, SEEK_SET);
-        s = malloc(size + 1);
-        s[fread(s, 1, size, f)] = 0;
-        return s;
-}
-
-// Returns malloc'd string
-char *Util_GetProgramPath()
-{
-        const size_t PathMax = 0xFFF;
-        const size_t ByteSize = sizeof(char) * PathMax + 1;
-        char *path = malloc(ByteSize);
-#if defined(Platform_Is_Linux)
-        // NOTE: Redundant allocation is needed because
-        //       string returned by dirname can be overwritten at any time.
-        //       I can try to avoid it but it doesn't matter that much.
-        //       The problem is that it //MAY// modify path instead of using a static buffer.
-        char *filepath  = malloc(sizeof(char) * PathMax + 1);
-        // TODO: Handle path that's more than PathMax.
-        //       How would I detect that?
-        int written_chars = readlink("/proc/self/exe", filepath, PathMax);
-        if (written_chars == -1) {
-                DieErr("Fatal: Failed to retrieve process path: %s", strerror(errno));
-        }
-        // NOTE: Readlink returns the program path including the name,
-        //       I don't need that.
-        char *dirpath = dirname(filepath);
-        int i;
-        for (i = 0; i < PathMax && dirpath[i]; ++i)
-                path[i] = dirpath[i];
-        path[i] = 0;
-        free(filepath);
-#else
-#       error "I can't get program path for this platform"
-#endif
-        return path;
-}
-
-char *Util_ConcatPaths(const char *path_a, const char *path_b)
-{
-        int la = strlen(path_a), lb = strlen(path_b);
-        int len = la + 1 + lb;
-        char *s = malloc(len + 1);
-        memcpy(s, path_a, la);
-#if defined(Platform_Is_Windows) 
-        s[la] = '\\';
-#elif !defined(Platform_Is_Unknown)
-        s[la] = '/';
-#else
-#       error "I don't know the path separator for this platform"
-#endif
-        s[len] = 0;
-        memcpy(s+la+1, path_b, lb);
-        return s;
-}
 
 // -- buffer
 
@@ -300,7 +225,7 @@ void Redactor_PackCharTab(Redactor *rs, int page)
 {
 
         int sfw = 300, sfh = 300, x = 0, y = 0, maxh = 0, padding = 0;
-        SDL_Surface *dsf = SDL_CreateRGBSurface(0, sfw, sfh, 32, 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
+        SDL_Surface *dsf = SDL_CreateRGBSurfaceWithFormat(0, sfw, sfh, 32, SDL_PIXELFORMAT_RGBA32);
         SDL_SetSurfaceBlendMode(dsf, SDL_BLENDMODE_BLEND);
         SDL_FillRect(dsf, NULL, SDL_MapRGBA(dsf->format, 0, 0, 0, 0));
 
@@ -308,6 +233,7 @@ void Redactor_PackCharTab(Redactor *rs, int page)
 
         for (int i = 0; i < 256; ++i) {
                 SDL_Surface *chsf = TTF_RenderGlyph32_Blended(rs->render_sdl_font_handle, i+page*256, (SDL_Color){255, 255, 255, 255});
+                SDL_SetSurfaceBlendMode(chsf, SDL_BLENDMODE_NONE);
         
                 if (chsf) {
                 // NOTE: Destination only
@@ -330,6 +256,7 @@ void Redactor_PackCharTab(Redactor *rs, int page)
                         if (chsfh > maxh) {
                                 maxh = chsfh;
                         }
+
 
                         SDL_Rect dest = (SDL_Rect){x+padding, y+padding, chsf->w, chsf->h};
                         rs->render_font_chunks[page]->glyphs[i] = dest;
@@ -381,6 +308,7 @@ void Redactor_Init(Redactor *rs)
 
         // -- Init font
         rs->render_sdl_font_handle = TTF_OpenFont(Redactor_GetTempResPath(rs, rs->cfg_font_respath), rs->cfg_font_size);
+
         if (!rs->render_sdl_font_handle) {
                 DieErr("Fatal: Can not font: %s\n", TTF_GetError());
         }
@@ -475,7 +403,7 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
         int c;
         int col = 0;
 
-        while (c = Uni_Utf8_NextVeryBad(&text)) {
+        while ((c = Uni_Utf8_NextVeryBad(&text))) {
                 // NOTE: Prevent out of bounds
                 if (c < 0 || c >= Redactor_GlyphmapGlyphMax) {
                         continue;
@@ -628,8 +556,10 @@ void Redactor_HandleEvents(Redactor *rs)
                         case SDL_SCANCODE_RIGHT:
                                 rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, 0, 1);
                                 break;
+                        default:;
                         }
                         break;
+                default:;
                 }
         }
 }
@@ -639,7 +569,7 @@ void Redactor_Cycle(Redactor *rs)
         Redactor_HandleEvents(rs);
         
         SDL_GetWindowSize(rs->render_sdl_window, &rs->render_window_size.x, &rs->render_window_size.y);
-        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
+        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 255, 255, 255, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
         Background_Draw(rs, &rs->toy_textureViewer_bg);
         Redactor_DrawDocument(rs);
@@ -657,6 +587,7 @@ int Redactor_Main(int argc, char *argv[])
 {
         Redactor rs = {0};
         Redactor_Init(&rs);
+        DieErr("Damn son\n");
 
         Redactor_UseArgs(&rs, argc, argv);
         Redactor_PrintMeta(&rs);
@@ -664,4 +595,5 @@ int Redactor_Main(int argc, char *argv[])
                 Redactor_Cycle(&rs);
         }
         Redactor_End(&rs);
+        return 0;
 }

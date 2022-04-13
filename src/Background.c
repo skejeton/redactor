@@ -2,7 +2,7 @@
 
 void Background_Draw(Redactor *rs, Background *bg)
 {
-        int ofsx = 0, ofsy = 0, xcount = 0, ycount = 0;
+        int xcount = 0, ycount = 0;
         int texture_w, texture_h;
         SDL_QueryTexture(bg->texture, NULL, NULL, &texture_w, &texture_h);
 

@@ -1,3 +1,17 @@
+
+// Setup platform macros
+#if   defined(__linux__)
+#       define Platform_Is_Linux
+#elif defined(_WIN32)
+#       define Platform_Is_Windows
+#elif defined(__APPLE__) || defined(__MACH__)
+#       define Platform_Is_Darwin
+#elif defined(__unix__)
+#       define Platform_Is_Unix
+#else
+#       define Platform_Is_Unknown
+#endif
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
@@ -6,7 +20,7 @@
 #define Redactor_GlyphmapGlyphMax (Redactor_GlyphmapChunkMax * 256)
 
 // Define macros here
-#define DieErr(...) do {fprintf(stderr, __VA_ARGS__); exit(-1);} while (0)
+#define DieErr(...) Util_DieErr(__VA_ARGS__)
 
 #ifdef  __has_attribute
 // Define attributes here
@@ -77,6 +91,12 @@ struct {
 }
 typedef Redactor;
 
+
+// -- Util
+char *Util_ReadFileStr(FILE *f);
+char *Util_GetProgramPath();
+char *Util_ConcatPaths(const char *path_a, const char *path_b);
+void Util_DieErr(const char *fmt, ...);
 
 // -- Background
 void Background_Draw(Redactor *rs, Background *bg);
