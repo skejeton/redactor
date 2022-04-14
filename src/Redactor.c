@@ -398,11 +398,12 @@ void Redactor_End(Redactor *rs)
 
 // -- draw
 
-int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
+SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int x, int y)
 {
         int c;
+        int initx = x;
         int col = 0;
-
+        
         while ((c = Uni_Utf8_NextVeryBad(&text))) {
                 // NOTE: Prevent out of bounds
                 if (c < 0 || c >= Redactor_GlyphmapGlyphMax) {
@@ -420,6 +421,7 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
                 }
 
                 GlyphChunk *chunk = rs->render_font_chunks[c / 256];
+                SDL_SetTextureColorMod(chunk->atlas, color.r, color.g, color.b);
 
                 SDL_Rect src = chunk->glyphs[c%256];
                 SDL_RenderCopy(rs->render_sdl_renderer, chunk->atlas, &src, &(SDL_Rect){x, y, src.w, src.h});
@@ -428,7 +430,7 @@ int Redactor_DrawText(Redactor *rs, int x, int y, const char *text)
         }
 
         // FIXME: This is a meh way to get line height
-        return rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0;
+        return (SDL_Point){x-initx, rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0};
 }
 
 SDL_Rect Redactor_GetCursorRect(Redactor *rs)
@@ -482,15 +484,6 @@ void Redactor_DrawCursor(Redactor *rs)
         SDL_RenderFillRect(rs->render_sdl_renderer, &cursor_rect);
 }
 
-void Redactor_DrawDocument(Redactor *rs)
-{
-        int y = 0;
-        for (int i = 0; i < rs->file_buffer.lines_len; ++i) {
-                const char *line = rs->file_buffer.lines[i].text;
-                y += Redactor_DrawText(rs, rs->render_scroll.x, rs->render_scroll.y+y, line);
-        }
-}
-
 // NOTE: For debugging
 void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
 {
@@ -510,10 +503,9 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
         char title[1024];
         snprintf(title, 1024, "Texture viewer | w %d | h %d | s %g", texture_w, texture_h, scale);
 
-        Redactor_DrawText(rs, tex_pos_x, tex_pos_y-20, title);
+        Redactor_DrawText(rs, Redactor_Color_White, title, tex_pos_x, tex_pos_y-20);
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 70, 50, 128, 128);
         SDL_RenderDrawRect(rs->render_sdl_renderer, &(SDL_Rect){tex_pos_x-2, tex_pos_y-2, texture_w+4, texture_h+4});
-        SDL_RenderCopy(rs->render_sdl_renderer, texture, NULL, &(SDL_Rect){tex_pos_x, tex_pos_y, texture_w, texture_h});
 }
 
 // -- control
@@ -569,10 +561,10 @@ void Redactor_Cycle(Redactor *rs)
         Redactor_HandleEvents(rs);
         
         SDL_GetWindowSize(rs->render_sdl_window, &rs->render_window_size.x, &rs->render_window_size.y);
-        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 64, 16, 0, 32);
         SDL_RenderClear(rs->render_sdl_renderer);
-        Background_Draw(rs, &rs->toy_textureViewer_bg);
-        Redactor_DrawDocument(rs);
+        //Background_Draw(rs, &rs->toy_textureViewer_bg);
+        Highlight_DrawHighlightedBuffer(rs);
         Redactor_DrawCursor(rs);
         /*
         if (rs->render_font_chunks[117]) {
@@ -587,7 +579,6 @@ int Redactor_Main(int argc, char *argv[])
 {
         Redactor rs = {0};
         Redactor_Init(&rs);
-        DieErr("Damn son\n");
 
         Redactor_UseArgs(&rs, argc, argv);
         Redactor_PrintMeta(&rs);

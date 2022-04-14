@@ -28,6 +28,15 @@
 
 #define Bgm_Tiled 1
 
+// Colors (NOTE: These are mostly for debugging)
+#define Redactor_Color_White  (SDL_Color){255,  255,    255,    255}
+#define Redactor_Color_Pink   (SDL_Color){255,  0,      255,    255}
+#define Redactor_Color_Yellow (SDL_Color){255,  255,    0,      255}
+#define Redactor_Color_Green  (SDL_Color){0,    255,    0,      255}
+#define Redactor_Color_Gray   (SDL_Color){200,  200,    200,    255}
+#define Redactor_Color_Black  (SDL_Color){0,    0,      0,      255}
+
+
 struct {
         SDL_Rect glyphs[256];
         SDL_Texture *atlas;
@@ -102,4 +111,10 @@ void Util_DieErr(const char *fmt, ...);
 void Background_Draw(Redactor *rs, Background *bg);
 
 // -- Redactor
+
+SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int x, int y);
 int Redactor_Main(int argc, char *argv[]);
+
+// -- Highlight
+void Highlight_DrawHighlightedBuffer(Redactor *rs);
+
