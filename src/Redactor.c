@@ -561,7 +561,7 @@ void Redactor_Cycle(Redactor *rs)
         Redactor_HandleEvents(rs);
         
         SDL_GetWindowSize(rs->render_sdl_window, &rs->render_window_size.x, &rs->render_window_size.y);
-        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 64, 16, 0, 32);
+        SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
         SDL_RenderClear(rs->render_sdl_renderer);
         //Background_Draw(rs, &rs->toy_textureViewer_bg);
         Highlight_DrawHighlightedBuffer(rs);

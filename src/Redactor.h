@@ -29,12 +29,13 @@
 #define Bgm_Tiled 1
 
 // Colors (NOTE: These are mostly for debugging)
-#define Redactor_Color_White  (SDL_Color){255,  255,    255,    255}
-#define Redactor_Color_Pink   (SDL_Color){255,  0,      255,    255}
-#define Redactor_Color_Yellow (SDL_Color){255,  255,    0,      255}
-#define Redactor_Color_Green  (SDL_Color){0,    255,    0,      255}
-#define Redactor_Color_Gray   (SDL_Color){200,  200,    200,    255}
-#define Redactor_Color_Black  (SDL_Color){0,    0,      0,      255}
+#define Redactor_Color_White   (SDL_Color){255,  255,    255,    255}
+#define Redactor_Color_Pink    (SDL_Color){225,  0,      255,    255}
+#define Redactor_Color_Pinkish (SDL_Color){200,  0,      100,    255}
+#define Redactor_Color_Yellow  (SDL_Color){255,  255,    0,      255}
+#define Redactor_Color_Green   (SDL_Color){0,    255,    0,      255}
+#define Redactor_Color_Gray    (SDL_Color){200,  200,    200,    255}
+#define Redactor_Color_Black   (SDL_Color){0,    0,      0,      255}
 
 
 struct {

@@ -65,6 +65,19 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
                                         *line.text = tc;
                                         startl = line.text;
                                 }
+                        } else if (*line.text == '#') {
+                                line.text++;
+                                while (*line.text && isalpha(*line.text)) {
+                                        line.text++;
+                                        col += 1;
+                                }
+
+                                int tc = *line.text;
+                                *line.text = 0;
+                                SDL_Point delta = Redactor_DrawText(rs, Redactor_Color_Pink, startl, position.x, position.y);
+                                height = delta.y;
+                                position.x += delta.x;
+                                *line.text = tc;
                         } else if (*line.text == '\"') {
                                 int spx = position.x;
                                 int skip = 0;
@@ -88,7 +101,34 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
                                 }
                                 int tc = *line.text;
                                 *line.text = 0;
-                                SDL_Point delta = Redactor_DrawText(rs, Redactor_Color_Pink, startl, spx, position.y);
+                                SDL_Point delta = Redactor_DrawText(rs, Redactor_Color_Pinkish, startl, spx, position.y);
+                                height = delta.y;
+                                position.x += delta.x;
+                                *line.text = tc;
+                        } else if (*line.text == '<') {
+                                int spx = position.x;
+                                int skip = 0;
+                                col += 1;
+                                while (Uni_Utf8_NextVeryBad(&line.text) && (*line.text != '>' || skip)) {
+                                        if (*line.text == '\\')  {
+                                                skip = 1;
+                                                Uni_Utf8_NextVeryBad(&line.text);
+                                                col += 2;
+                                        } else if (*line.text == '\t') {
+                                                position.x += rs->render_font_chunks[0]->glyphs[' '].w * (8 - (col % 8));
+                                                col += (8 - (col % 8));
+                                        } else {
+                                                col += 1;
+                                        }
+                                        skip = 0;
+                                }
+                                if (*line.text) {
+                                        col += 1;
+                                        *line.text++;
+                                }
+                                int tc = *line.text;
+                                *line.text = 0;
+                                SDL_Point delta = Redactor_DrawText(rs, Redactor_Color_Pinkish, startl, spx, position.y);
                                 height = delta.y;
                                 position.x += delta.x;
                                 *line.text = tc;
@@ -101,12 +141,26 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
                                 height = delta.y;
                                 position.x += delta.x;
                                 line.text += 2;
-                        } else if ((tok = FindKw(line.text))) {
-                                line.text += strlen(tok);
-                                col += strlen(tok);
-                                SDL_Point delta = Redactor_DrawText(rs, Redactor_Color_Green, tok, position.x, position.y);
-                                height = delta.y;
-                                position.x += delta.x;
+                        } else if (isalpha(*line.text)) {
+                                if ((tok = FindKw(line.text))) {
+                                        line.text += strlen(tok);
+                                        col += strlen(tok);
+                                        SDL_Point delta = Redactor_DrawText(rs, Redactor_Color_Green, tok, position.x, position.y);
+                                        height = delta.y;
+                                        position.x += delta.x;
+                                } else {
+                                        while (isalpha(*line.text)) {
+                                                line.text++;
+                                                col++;
+                                        }
+                                        int tc = *line.text;
+                                        *line.text = 0;
+                                        SDL_Point delta = Redactor_DrawText(rs, Redactor_Color_White, startl, position.x, position.y);
+                                        height = delta.y;
+                                        position.x += delta.x;
+                                        *line.text = tc;
+                                        
+                                }
                         } else if ((c = Uni_Utf8_NextVeryBad(&line.text))) {
                                 int tc = *line.text;
                                 *line.text = 0;
