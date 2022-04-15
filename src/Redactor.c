@@ -398,11 +398,10 @@ void Redactor_End(Redactor *rs)
 
 // -- draw
 
-SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int x, int y)
+SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int x, int y, int col)
 {
         int c;
         int initx = x;
-        int col = 0;
         
         while ((c = Uni_Utf8_NextVeryBad(&text))) {
                 // NOTE: Prevent out of bounds
@@ -503,7 +502,7 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
         char title[1024];
         snprintf(title, 1024, "Texture viewer | w %d | h %d | s %g", texture_w, texture_h, scale);
 
-        Redactor_DrawText(rs, Redactor_Color_White, title, tex_pos_x, tex_pos_y-20);
+        Redactor_DrawText(rs, Redactor_Color_White, title, tex_pos_x, tex_pos_y-20, 0);
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 70, 50, 128, 128);
         SDL_RenderDrawRect(rs->render_sdl_renderer, &(SDL_Rect){tex_pos_x-2, tex_pos_y-2, texture_w+4, texture_h+4});
 }

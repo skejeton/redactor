@@ -22,6 +22,131 @@ static const char* FindKw(const char *kw)
         return NULL;
 }
 
+enum {
+        Highlight_Rule_AnyChar,
+        Highlight_Rule_Wrapped,
+};
+
+struct {
+        int rule_type;
+        SDL_Color color;
+        union {
+                const char *rule_anychar;
+                struct { 
+                        const char *begin, *end, *slash;
+                } rule_wrapped;
+        };
+}
+typedef Highlight_Rule;
+
+
+
+
+bool Highlight_Process_AnyChar(Redactor *rs, const char *charset, int *line_no, Line *line)
+{
+        int n = 0, c;
+        char *prev = line->text;
+        while ((c = Uni_Utf8_NextVeryBad(&line->text)) && Uni_Utf8_Strchr(charset, c)) {
+                prev = line->text;
+                n++;
+        }
+        line->text = prev;
+
+        return n > 0;
+}
+
+bool Highlight_Process_Wrapped(Redactor *rs, const char *begin, const char *end, const char *slash, int *line_no, Line *line)
+{
+        int sb = strlen(begin), se = strlen(end), ss = strlen(slash);
+
+        if (strncmp(line->text, begin, sb) == 0) {
+                line->text += sb;
+ 
+                while (*line->text && strncmp(line->text, end, se) != 0) {
+                        if (strncmp(line->text, slash, ss) == 0) {
+                                line->text += ss;
+                        }
+                        if (*line->text) {
+                                line->text++;
+                        }
+                }
+                if (*line->text) {
+                        line->text += se;
+                }
+                return true;
+        } else {
+                return false;
+        }
+}
+
+void Highlight_DrawHighlightedBuffer(Redactor *rs)
+{
+        SDL_Point position = {rs->render_scroll.x, rs->render_scroll.y};
+        int height = rs->render_font_chunks[0]->glyphs[' '].h;
+
+        Highlight_Rule rules[32];
+        int rule_count = 0;
+        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyChar, Redactor_Color_Yellow, "0123456789"};
+        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Pinkish, {.rule_wrapped = {"\"", "\"", "\\"}}};
+        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"//", "\n", ""}}};
+        
+
+        int line_no = 0;
+
+        while (line_no < rs->file_buffer.lines_len) {
+                int col = 0;
+                Line line = rs->file_buffer.lines[line_no];
+                while (*line.text) {
+                        char *start = line.text;
+                        bool match = false;
+                        SDL_Color color = Redactor_Color_White;
+
+                        for (int i = 0; i < rule_count; ++i)  {
+                                Highlight_Rule *rule = &rules[i];
+                                switch (rule->rule_type) {
+                                case Highlight_Rule_AnyChar:
+                                        match = Highlight_Process_AnyChar(rs, rule->rule_anychar, &line_no, &line);
+                                        break;
+                                case Highlight_Rule_Wrapped:
+                                        match = Highlight_Process_Wrapped(rs, rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &line_no, &line);
+                                        break;
+                                }
+
+                                if (match) {
+                                        color = rule->color;
+                                        break;
+                                }
+                        }
+
+                        if (!match) {
+                                line.text = start;
+                                Uni_Utf8_NextVeryBad(&line.text);
+                        }
+
+                        int tc = *line.text;
+                        *line.text = 0;
+                        SDL_Point delta = Redactor_DrawText(rs, color, start, position.x, position.y, col);
+                        // FIXME: Slow, and pretty much a hack anyway
+                        int c;
+                        while (c = Uni_Utf8_NextVeryBad(&start)) {
+                                if (c == '\t') {
+                                        col += (8 - (col % 8));
+                                } else {
+                                        col += 1;
+                                }
+                        }
+                        height = delta.y;
+                        position.x += delta.x;
+                        *line.text = tc;
+                }
+
+                position.y += height;
+                position.x = rs->render_scroll.x;
+                line_no++;
+        }
+}
+
+#if 0
 void Highlight_DrawHighlightedBuffer(Redactor *rs)
 {
         SDL_Point position = {rs->render_scroll.x, rs->render_scroll.y};
@@ -189,3 +314,4 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
                 position.y += height;
         }
 }
+#endif

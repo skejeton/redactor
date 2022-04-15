@@ -113,7 +113,7 @@ void Background_Draw(Redactor *rs, Background *bg);
 
 // -- Redactor
 
-SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int x, int y);
+SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int x, int y, int col);
 int Redactor_Main(int argc, char *argv[]);
 
 // -- Highlight
