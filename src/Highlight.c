@@ -1,7 +1,6 @@
 #include "Redactor.h"
 #include "Unicode.h"
 
-#if 0
 const char *keytab[] = {
         "auto", "bool", "break", "case", "char",
         "const","continue","default","double",
@@ -13,6 +12,7 @@ const char *keytab[] = {
         "unsigned","void","volatile","while", NULL
 };
 
+#if 0
 static const char* FindKw(const char *kw)
 {
         for (int i = 0; keytab[i]; ++i) {
@@ -26,6 +26,7 @@ static const char* FindKw(const char *kw)
 
 enum {
         Highlight_Rule_AnyChar,
+        Highlight_Rule_AnyKw,
         Highlight_Rule_Wrapped,
 };
 
@@ -34,6 +35,7 @@ struct {
         SDL_Color color;
         union {
                 const char *rule_anychar;
+                const char **rule_anykw;
                 struct { 
                         const char *begin, *end, *slash;
                 } rule_wrapped;
@@ -41,8 +43,18 @@ struct {
 }
 typedef Highlight_Rule;
 
+bool Highlight_Process_AnyKw(Redactor *rs, const char *keytab[], int *line_no, Line *line)
+{
+        for (int i = 0; keytab[i]; ++i) {
+                int kl = strlen(keytab[i]);
+                if (strncmp(keytab[i], line->text, kl) == 0) {
+                        line->text += kl;
+                        return true;
+                }
+        }
 
-
+        return false;
+}
 
 bool Highlight_Process_AnyChar(Redactor *rs, const char *charset, int *line_no, Line *line)
 {
@@ -95,6 +107,7 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Pinkish, {.rule_wrapped = {"\"", "\"", "\\"}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"/*", "*/", ""}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"//", "\n", ""}}};
+        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Green, {.rule_anykw = keytab}};
         
 
         int line_no = 0;
@@ -113,6 +126,9 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
                                 switch (rule->rule_type) {
                                 case Highlight_Rule_AnyChar:
                                         match = Highlight_Process_AnyChar(rs, rule->rule_anychar, &line_no, &line);
+                                        break;
+                                case Highlight_Rule_AnyKw:
+                                        match = Highlight_Process_AnyKw(rs, rule->rule_anykw, &line_no, &line);
                                         break;
                                 case Highlight_Rule_Wrapped:
                                         match = Highlight_Process_Wrapped(rs, rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &line_no, &line);
