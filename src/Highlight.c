@@ -34,7 +34,10 @@ struct {
         int rule_type;
         SDL_Color color;
         union {
-                const char *rule_anychar;
+                struct {
+                        const char *charset;
+                        bool bounded; // Will invalidate if sees alphanumeric characters around
+                } rule_anychar;
                 const char **rule_anykw;
                 struct { 
                         const char *begin, *end, *slash;
@@ -43,11 +46,25 @@ struct {
 }
 typedef Highlight_Rule;
 
+char In_LineGetRelByte(Redactor *rs, Line rel, int line_no, int byteid)
+{
+        Line abs = rs->file_buffer.lines[line_no];
+        byteid += rel.text - abs.text;
+        return byteid < 0 || byteid >= abs.text_size ? 0 : abs.text[byteid];
+}
+
 bool Highlight_Process_AnyKw(Redactor *rs, const char *keytab[], int *line_no, Line *line)
 {
+        // boundary check
+        if (isalnum(In_LineGetRelByte(rs, *line, *line_no, -1)))
+                return false;
         for (int i = 0; keytab[i]; ++i) {
                 int kl = strlen(keytab[i]);
                 if (strncmp(keytab[i], line->text, kl) == 0) {
+                        // boundary check
+                        if (isalnum(In_LineGetRelByte(rs, *line, *line_no, kl))) {
+                                return false;
+                        }
                         line->text += kl;
                         return true;
                 }
@@ -56,10 +73,13 @@ bool Highlight_Process_AnyKw(Redactor *rs, const char *keytab[], int *line_no, L
         return false;
 }
 
-bool Highlight_Process_AnyChar(Redactor *rs, const char *charset, int *line_no, Line *line)
+bool Highlight_Process_AnyChar(Redactor *rs, bool bounded, const char *charset, int *line_no, Line *line)
 {
         int n = 0, c;
         char *prev = line->text;
+        if (bounded && isalnum(In_LineGetRelByte(rs, *line, *line_no, -1))) {
+                return false;
+        }
         while ((c = Uni_Utf8_NextVeryBad((const char **)&line->text)) && Uni_Utf8_Strchr(charset, c)) {
                 prev = line->text;
                 n++;
@@ -103,7 +123,7 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
 
         Highlight_Rule rules[32];
         int rule_count = 0;
-        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyChar, Redactor_Color_Yellow, {"0123456789"}};
+        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyChar, Redactor_Color_Yellow, {.rule_anychar = {"0123456789", true}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Pinkish, {.rule_wrapped = {"\"", "\"", "\\"}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"/*", "*/", ""}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"//", "\n", ""}}};
@@ -125,7 +145,7 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
                                 Highlight_Rule *rule = &rules[i];
                                 switch (rule->rule_type) {
                                 case Highlight_Rule_AnyChar:
-                                        match = Highlight_Process_AnyChar(rs, rule->rule_anychar, &line_no, &line);
+                                        match = Highlight_Process_AnyChar(rs, rule->rule_anychar.bounded, rule->rule_anychar.charset, &line_no, &line);
                                         break;
                                 case Highlight_Rule_AnyKw:
                                         match = Highlight_Process_AnyKw(rs, rule->rule_anykw, &line_no, &line);
