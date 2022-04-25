@@ -12,6 +12,11 @@ const char *keytab[] = {
         "unsigned","void","volatile","while", NULL
 };
 
+const char *symtab[] = {
+        "NULL", "false", "true", NULL
+};
+
+
 #if 0
 static const char* FindKw(const char *kw)
 {
@@ -125,9 +130,12 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
         int rule_count = 0;
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyChar, Redactor_Color_Yellow, {.rule_anychar = {"0123456789", true}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Pinkish, {.rule_wrapped = {"\"", "\"", "\\"}}};
+        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Pinkish, {.rule_wrapped = {"\'", "\'", "\\"}}};
+        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"#", "\n", ""}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"/*", "*/", ""}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"//", "\n", ""}}};
         rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Green, {.rule_anykw = keytab}};
+        rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Pinkish, {.rule_anykw = symtab}};
         
 
         int line_no = 0;
