@@ -508,6 +508,49 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
 }
 
 // -- control
+void Redactor_SetCursorAtScreenPos(Redactor *rs, int x, int y)
+{
+        int line = (y - rs->render_scroll.y) / (rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 1);
+
+        if (line < 0) {
+                line = 0;
+        } else if (line > rs->file_buffer.lines_len) {
+                line = rs->file_buffer.lines_len-1;
+        }
+        rs->file_cursor.line = line;
+
+        Line linedata = rs->file_buffer.lines[line];
+        int column = 0;
+        int col = 0;
+        int mindist = x;
+        int cx = 0;
+
+        for (int c; (c = Uni_Utf8_NextVeryBad(&linedata.text)); ++column) {
+                // NOTE: Prevent out of bounds
+                if (c < 0 || c >= Redactor_GlyphmapGlyphMax) {
+                        continue;
+                }
+
+                if (c == '\t') {
+                        cx += rs->render_font_chunks[0]->glyphs[' '].w * (8 - (col % 8));
+                        col += (8 - (col % 8));
+                } else {
+                        cx += rs->render_font_chunks[c / 256]->glyphs[c % 256].w;
+                        col++;
+                }
+
+                int dist = abs(cx - x);
+
+                if (dist > mindist) {
+                        break;
+                } else {
+                        mindist = dist;
+                }
+        }
+
+        rs->file_cursor.column = column;
+}
+        
 
 void Redactor_HandleEvents(Redactor *rs)
 {
@@ -524,6 +567,10 @@ void Redactor_HandleEvents(Redactor *rs)
                 case SDL_TEXTINPUT:
                         rs->file_cursor = Redactor_Buffer_InsertUTF8(rs, rs->file_cursor, event.text.text);
                         break;
+                case SDL_MOUSEBUTTONDOWN:
+                        if (event.button.button == SDL_BUTTON_LEFT) {
+                                Redactor_SetCursorAtScreenPos(rs, event.button.x, event.button.y);
+                        }
                 case SDL_KEYDOWN:
                         switch (event.key.keysym.scancode) {
                         case SDL_SCANCODE_TAB:
