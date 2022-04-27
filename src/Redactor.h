@@ -92,6 +92,7 @@ struct {
         SDL_Window   *render_sdl_window;
         SDL_Renderer *render_sdl_renderer;
         TTF_Font     *render_sdl_font_handle;
+        int           render_font_height;
 
         bool          file_is_new;
         const char   *file_name;

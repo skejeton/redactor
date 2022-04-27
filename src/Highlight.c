@@ -16,19 +16,6 @@ const char *symtab[] = {
         "NULL", "false", "true", NULL
 };
 
-
-#if 0
-static const char* FindKw(const char *kw)
-{
-        for (int i = 0; keytab[i]; ++i) {
-                if (strncmp(kw, keytab[i], strlen(keytab[i])) == 0) {
-                        return keytab[i];
-                } 
-        }
-        return NULL;
-}
-#endif
-
 enum {
         Highlight_Rule_AnyChar,
         Highlight_Rule_AnyKw,
@@ -124,7 +111,7 @@ bool Highlight_Process_Wrapped(Redactor *rs, const char *begin, const char *end,
 void Highlight_DrawHighlightedBuffer(Redactor *rs)
 {
         SDL_Point position = {rs->render_scroll.x, rs->render_scroll.y};
-        int height = rs->render_font_chunks[0]->glyphs[' '].h;
+        int height = rs->render_font_height;
 
         Highlight_Rule rules[32];
         int rule_count = 0;

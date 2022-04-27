@@ -312,6 +312,9 @@ void Redactor_Init(Redactor *rs)
         if (!rs->render_sdl_font_handle) {
                 DieErr("Fatal: Can not font: %s\n", TTF_GetError());
         }
+
+        rs->render_font_height = TTF_FontHeight(rs->render_sdl_font_handle);
+
         // NOTE: ASCII table must be pre-mapped
         Redactor_PackCharTab(rs, 0);
 
@@ -428,8 +431,7 @@ SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int
                 col++;
         }
 
-        // FIXME: This is a meh way to get line height
-        return (SDL_Point){x-initx, rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0};
+        return (SDL_Point){x-initx, rs->render_font_height};
 }
 
 SDL_Rect Redactor_GetCursorRect(Redactor *rs)
@@ -438,8 +440,7 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
         
         int x = 0, y = 0;
         int col = 0;
-        // FIXME: This is a meh way to get line height
-        int h = rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 0;
+        int h = rs->render_font_height;
         y = cursor.line * h;
 
         const char *line = rs->file_buffer.lines[cursor.line].text;
@@ -467,7 +468,7 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
         return (SDL_Rect){rs->render_scroll.x+x, rs->render_scroll.y+y, 2, h};
 }
 
-void Redactor_DrawCursor(Redactor *rs) 
+void Redactor_MoveCursorToVisibleArea(Redactor *rs)
 {
         SDL_Rect cursor_rect = Redactor_GetCursorRect(rs);
 
@@ -477,7 +478,11 @@ void Redactor_DrawCursor(Redactor *rs)
         if ((cursor_rect.y + cursor_rect.h) > rs->render_window_size.y) {
                 rs->render_scroll.y -= (cursor_rect.y + cursor_rect.h) - rs->render_window_size.y;
         }
-        cursor_rect = Redactor_GetCursorRect(rs);
+}
+
+void Redactor_DrawCursor(Redactor *rs) 
+{
+        SDL_Rect cursor_rect = Redactor_GetCursorRect(rs);
 
         SDL_SetRenderDrawColor(rs->render_sdl_renderer, 255, 255, 255, 255);
         SDL_RenderFillRect(rs->render_sdl_renderer, &cursor_rect);
@@ -510,11 +515,11 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
 // -- control
 void Redactor_SetCursorAtScreenPos(Redactor *rs, int x, int y)
 {
-        int line = (y - rs->render_scroll.y) / (rs->render_font_chunks[0] ? rs->render_font_chunks[0]->glyphs[' '].h : 1);
+        int line = (y - rs->render_scroll.y) / rs->render_font_height;
 
         if (line < 0) {
                 line = 0;
-        } else if (line > rs->file_buffer.lines_len) {
+        } else if (line > rs->file_buffer.lines_len-1) {
                 line = rs->file_buffer.lines_len-1;
         }
         rs->file_cursor.line = line;
@@ -550,7 +555,20 @@ void Redactor_SetCursorAtScreenPos(Redactor *rs, int x, int y)
 
         rs->file_cursor.column = column;
 }
+
+void Redactor_ScrollScreen(Redactor *rs, int byX, int byY)
+{
+        rs->render_scroll.y += byY;
+        int hlimit = -((int)rs->file_buffer.lines_len*rs->render_font_height)+rs->render_window_size.y;
         
+        // TODO: Figure out why scroll is so weird, it goes into negatives?
+
+        if (rs->render_scroll.y < hlimit)
+                rs->render_scroll.y = hlimit;
+
+        if (rs->render_scroll.y > 0)
+                rs->render_scroll.y = 0;
+}
 
 void Redactor_HandleEvents(Redactor *rs)
 {
@@ -563,6 +581,7 @@ void Redactor_HandleEvents(Redactor *rs)
                         break;
                 case SDL_MOUSEWHEEL:
                         rs->toy_textureViewer_scale += event.wheel.y/10.0;
+                        Redactor_ScrollScreen(rs, 0, event.wheel.y * rs->render_font_height);
                         break;
                 case SDL_TEXTINPUT:
                         rs->file_cursor = Redactor_Buffer_InsertUTF8(rs, rs->file_cursor, event.text.text);
@@ -570,29 +589,37 @@ void Redactor_HandleEvents(Redactor *rs)
                 case SDL_MOUSEBUTTONDOWN:
                         if (event.button.button == SDL_BUTTON_LEFT) {
                                 Redactor_SetCursorAtScreenPos(rs, event.button.x, event.button.y);
+                                Redactor_MoveCursorToVisibleArea(rs);
                         }
                 case SDL_KEYDOWN:
                         switch (event.key.keysym.scancode) {
                         case SDL_SCANCODE_TAB:
                                 rs->file_cursor = Redactor_Buffer_InsertUTF8(rs, rs->file_cursor, "\t");
+                                Redactor_MoveCursorToVisibleArea(rs);
                                 break;
                         case SDL_SCANCODE_RETURN:
                                 rs->file_cursor = Redactor_Buffer_SplitLineAt(rs, rs->file_cursor);
+                                Redactor_MoveCursorToVisibleArea(rs);
                                 break;
                         case SDL_SCANCODE_BACKSPACE:
                                 rs->file_cursor = Redactor_Buffer_RemoveCharacter(rs, rs->file_cursor);
+                                Redactor_MoveCursorToVisibleArea(rs);
                                 break;
                         case SDL_SCANCODE_UP:
                                 rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, -1, 0);
+                                Redactor_MoveCursorToVisibleArea(rs);
                                 break;
                         case SDL_SCANCODE_DOWN:
                                 rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, 1, 0);
+                                Redactor_MoveCursorToVisibleArea(rs);
                                 break;
                         case SDL_SCANCODE_LEFT:
                                 rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, 0, -1);
+                                Redactor_MoveCursorToVisibleArea(rs);
                                 break;
                         case SDL_SCANCODE_RIGHT:
                                 rs->file_cursor = Redactor_Buffer_MoveCursor(rs, rs->file_cursor, 0, 1);
+                                Redactor_MoveCursorToVisibleArea(rs);
                                 break;
                         default:;
                         }
