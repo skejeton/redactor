@@ -73,6 +73,11 @@ struct {
 typedef Buffer;
 
 struct {
+       bool ks_ctrl;
+}
+typedef Input;
+
+struct {
         Background    toy_textureViewer_bg;
         float         toy_textureViewer_scale;
 
@@ -99,11 +104,14 @@ struct {
         FILE         *file_handle;
         Buffer        file_buffer;
         Cursor        file_cursor;
+
+        Input         input;
 }
 typedef Redactor;
 
 
 // -- Util
+char *Util_Strdup(const char *s);
 char *Util_ReadFileStr(FILE *f);
 char *Util_GetProgramPath();
 char *Util_ConcatPaths(const char *path_a, const char *path_b);
@@ -114,6 +122,7 @@ void Background_Draw(Redactor *rs, Background *bg);
 
 // -- Redactor
 
+Cursor Redactor_Buffer_InsertUTF8(Redactor *rs, Cursor cursor, const char *text);
 SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int x, int y, int col);
 int Redactor_Main(int argc, char *argv[]);
 

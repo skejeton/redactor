@@ -5,6 +5,11 @@
 #include <libgen.h>
 #endif
 
+char *Util_Strdup(const char *s)
+{
+        return strcpy(malloc(strlen(s)+1), s);
+}
+
 char *Util_ReadFileStr(FILE *f)
 {
         char *s;

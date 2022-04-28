@@ -39,7 +39,7 @@ struct {
 typedef Highlight_Rule;
 
 char In_LineGetRelByte(Redactor *rs, Line rel, int line_no, int byteid)
-{
+{ 
         Line abs = rs->file_buffer.lines[line_no];
         byteid += rel.text - abs.text;
         return byteid < 0 || byteid >= abs.text_size ? 0 : abs.text[byteid];

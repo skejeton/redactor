@@ -18,7 +18,7 @@
 
 // -- buffer
 
-Cursor Redactor_Buffer_InsertUTF8(Redactor *rs, Cursor cursor, const char *text)
+Cursor Redactor_Buffer_InsertUTF8Solo(Redactor *rs, Cursor cursor, const char *text)
 {
         Line *line = &rs->file_buffer.lines[cursor.line];
         size_t new_size = strlen(text) + line->text_size;
@@ -186,6 +186,30 @@ Cursor Redactor_Buffer_SplitLineAt(Redactor *rs, Cursor under)
         Redactor_Buffer_InsertUTF8(rs, under, line_iter);
         line_text[line_iter-line_text] = 0;
         return under;
+}
+
+Cursor Redactor_Buffer_InsertUTF8(Redactor *rs, Cursor cursor, const char *text)
+{
+        char *txt = Util_Strdup(text);
+        char *txtStart = txt;
+        while (*txt) {
+                char *start = txt;
+                while (*txt && *txt != '\n') {
+                        txt++;
+                }
+                int c = *txt;
+                *txt = 0;
+        
+                cursor = Redactor_Buffer_InsertUTF8Solo(rs, cursor, start);
+                *txt = c;
+
+                if (*txt) {
+                        cursor = Redactor_Buffer_SplitLineAt(rs, cursor);
+                        txt++;
+                }
+        }
+        free(txtStart);
+        return cursor;
 }
 
 void Redactor_Buffer_Deinit(Redactor *rs)
@@ -590,9 +614,35 @@ void Redactor_HandleEvents(Redactor *rs)
                         if (event.button.button == SDL_BUTTON_LEFT) {
                                 Redactor_SetCursorAtScreenPos(rs, event.button.x, event.button.y);
                                 Redactor_MoveCursorToVisibleArea(rs);
+                        } 
+                        break;
+                case SDL_KEYUP: {
+                        switch (event.key.keysym.scancode) {
+                        // -- control keys
+                        case SDL_SCANCODE_LCTRL:
+                        case SDL_SCANCODE_RCTRL:
+                                rs->input.ks_ctrl = false;
+                                break;
+                        default:;
                         }
+                        break;
+                }
                 case SDL_KEYDOWN:
                         switch (event.key.keysym.scancode) {
+                        // -.- control keys
+                        case SDL_SCANCODE_LCTRL:
+                        case SDL_SCANCODE_RCTRL:
+                                rs->input.ks_ctrl = true;
+                                break;
+                        // -- control keystrokes
+                        case SDL_SCANCODE_V: {
+                                if (rs->input.ks_ctrl) {
+                                        char *clipboardText = SDL_GetClipboardText();
+                                        rs->file_cursor = Redactor_Buffer_InsertUTF8(rs, rs->file_cursor, clipboardText);
+                                        free(clipboardText);
+                                }
+                        } break;
+                        // -- miscel
                         case SDL_SCANCODE_TAB:
                                 rs->file_cursor = Redactor_Buffer_InsertUTF8(rs, rs->file_cursor, "\t");
                                 Redactor_MoveCursorToVisibleArea(rs);
