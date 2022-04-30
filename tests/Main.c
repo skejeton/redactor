@@ -1,5 +1,11 @@
-#include <stdio.h>
+#include "test.h"
 
-int main() {
-        printf("Tests main\n");
+void Test_Buffer_Main();
+
+int total_asserts, total_passed;
+
+int main() 
+{
+    RunTest(Test_Buffer_Main());
+    Tally();
 }

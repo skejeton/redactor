@@ -1,7 +1,7 @@
 FILES = $(shell echo src/*.c)
-TEST_FILES = $(shell echo tests/*.c) $(filter-out src/Main.c, $(FILES))
-HEADERS = $(shell echo src/*.h)
-TEST_HEADERS = $(shell echo src/*.h) $(shell echo tests/*.h)
+TEST_FILES = $(shell echo tests/*/Main.c) $(shell echo tests/*.c) $(filter-out src/Main.c, $(FILES))
+HEADERS = $(shell find -name "*.h")
+TEST_HEADERS = $(HEADERS)
 OBJECTS = $(FILES:.c=.o)
 TEST_OBJECTS = $(TEST_FILES:.c=.o) 
 LDFLAGS = -lSDL2 -lSDL2_ttf -lm -lc
