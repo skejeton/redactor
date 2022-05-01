@@ -16,6 +16,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
 #include "Buffer.h"
+#include "Redex.h"
 
 #define Redactor_GlyphmapChunkMax 1024
 #define Redactor_GlyphmapGlyphMax (Redactor_GlyphmapChunkMax * 256)
@@ -56,11 +57,6 @@ struct {
 }
 typedef Input;
 
-struct {
-    bool    success;
-    Cursor  end;
-}
-typedef Redex_Match;
 
 struct {
     Background    toy_textureViewer_bg;

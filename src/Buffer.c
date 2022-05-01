@@ -2,6 +2,7 @@
 #include "Unicode.h"
 #include <stdlib.h>
 #include <string.h>
+#include "Mem2.h"
 
 Cursor InsertUTF8Solo(Buffer *buf, Cursor cursor, const char *text)
 {
@@ -13,18 +14,18 @@ Cursor InsertUTF8Solo(Buffer *buf, Cursor cursor, const char *text)
     int unilen = Uni_Utf8_Strlen(text);
     const char *line_iter = line->text;
 
-        // --find cursor
+    // --find cursor
     for (int i = 0; i != cursor.column && Uni_Utf8_NextVeryBad(&line_iter); ++i)
         ;
     cursor_pos_byte = line_iter - line->text;
 
-        // --before
+    // --before
     for (int i = 0; i < cursor_pos_byte; ++i)
         *new_line++ = line->text[i];
-        // --mid
+    // --mid
     for (int i = 0; text[i]; ++i)
         *new_line++ = text[i];
-        // --after
+    // --after
     for (int i = cursor_pos_byte; line->text[i]; ++i)
         *new_line++ = line->text[i];
 
@@ -103,9 +104,8 @@ Cursor SplitLineAt(Buffer *buf, Cursor under)
 
     char *line_text = line->text;
     const char *line_iter = line->text;
-        // NOTE: character before cursor
-
-        // --find cursor
+    
+    // --find cursor
     for (int i = 0; i != under.column && Uni_Utf8_NextVeryBad(&line_iter); ++i)
         ;
     line->text_size = line_iter-line->text;
@@ -116,6 +116,15 @@ Cursor SplitLineAt(Buffer *buf, Cursor under)
     Buffer_InsertUTF8(buf, under, line_iter);
     line_text[line_iter-line_text] = 0;
     return under;
+}
+
+size_t GetLineColOfs(Line l, int32_t column)
+{
+    char *start = l.text;
+    while (column-- && Uni_Utf8_NextVeryBad((const char **)&l.text))
+        ;
+
+    return l.text-start;
 }
 
 Cursor Buffer_RemoveCharacterUnder(Buffer *buf, Cursor under)
@@ -171,6 +180,15 @@ Cursor Buffer_MoveCursor(Buffer *buf, Cursor cursor, int lines, int cols)
     return MoveCursorColumns(buf, cursor, cols);
 }
 
+Cursor Buffer_EndCursor(Buffer *buf)
+{
+    if (buf->lines_len < 1) {
+        return (Cursor){-1, -1};
+    }
+
+    return (Cursor){.line = buf->lines_len-1, .column = buf->lines[buf->lines_len-1].text_len};
+}
+
 Cursor Buffer_InsertUTF8(Buffer *buf, Cursor cursor, const char *text)
 {
     char *txt = Util_Strdup(text);
@@ -195,10 +213,67 @@ Cursor Buffer_InsertUTF8(Buffer *buf, Cursor cursor, const char *text)
     return cursor;
 }
 
+
+char *Buffer_GetStringRange(Buffer *buf, Range range)
+{
+    Line line = buf->lines[range.from.line];
+    size_t strSize = 0;
+    char *strDat = 0;
+
+    for (int l = range.from.line; l <= range.to.line; line = buf->lines[++l]) {
+        Line line = buf->lines[l];
+        size_t lineSize = line.text_size;
+        bool newline = true;
+
+        if (l == range.from.line) {
+            // go to range start
+            for (int i = 0; i < range.from.column && Uni_Utf8_NextVeryBad((const char**)&line.text); ++i)
+                ;
+            lineSize = strlen(line.text);
+        }
+
+        if (l == range.to.line) {
+            char *start = line.text;
+            int endColumn  = range.to.column;
+            if (range.from.line == range.to.line) {
+                endColumn = range.to.column - range.from.column;
+            }
+            for (int i = 0; i < endColumn && Uni_Utf8_NextVeryBad((const char**)&line.text); ++i)
+                ;
+
+            lineSize = line.text-start;
+            line.text = start;
+            newline = false;
+        }
+
+
+        size_t strOfs = strSize;
+        strSize += lineSize;
+        if (newline) {
+            strSize += 1;
+        }
+
+        strDat = realloc(strDat, strSize+1);
+        memcpy(strDat+strOfs, line.text, lineSize);
+        if (newline) {
+            strDat[strSize-1] = '\n';
+        }
+    }   
+    strDat[strSize] = 0;
+    return strDat;
+}
+
 Buffer Buffer_Init()
 {
     Buffer buf = {0};
     AddLine(&buf, "");
+    return buf;
+}
+
+Buffer Buffer_InitFromString(const char *s)
+{
+    Buffer buf = Buffer_Init();
+    Buffer_InsertUTF8(&buf, (Cursor){0, 0}, s);
     return buf;
 }
 
@@ -209,4 +284,5 @@ void Buffer_Deinit(Buffer *buf)
     }
     free(buf->lines);
 }
+
 

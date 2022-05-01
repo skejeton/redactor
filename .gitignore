@@ -1,3 +1,4 @@
 *.o
 bin/redactor
+bin/test
 *.sublime-workspace
