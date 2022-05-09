@@ -2,6 +2,7 @@
 #define R_REDEX_H
 
 #include "Buffer.h"
+#include <stdbool.h>
 
 struct {
     bool success;

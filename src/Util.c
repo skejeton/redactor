@@ -28,19 +28,19 @@ char *Util_GetProgramPath()
     const size_t ByteSize = sizeof(char) * PathMax + 1;
     char *path = malloc(ByteSize);
 #if defined(Platform_Is_Linux)
-        // NOTE: Redundant allocation is needed because
-        //       string returned by dirname can be overwritten at any time.
-        //       I can try to avoid it but it doesn't matter that much.
-        //       The problem is that it //MAY// modify path instead of using a static buffer.
+    // NOTE: Redundant allocation is needed because
+    //       string returned by dirname can be overwritten at any time.
+    //       I can try to avoid it but it doesn't matter that much.
+    //       The problem is that it //MAY// modify path instead of using a static buffer.
     char *filepath  = malloc(sizeof(char) * PathMax + 1);
-        // TODO: Handle path that's more than PathMax.
-        //       How would I detect that?
+    // TODO: Handle path that's more than PathMax.
+    //       How would I detect that?
     int written_chars = readlink("/proc/self/exe", filepath, PathMax);
     if (written_chars == -1) {
         DieErr("Fatal: Failed to retrieve process path: %s", strerror(errno));
     }
-        // NOTE: Readlink returns the program path including the name,
-        //       I don't need that.
+    // NOTE: Readlink returns the program path including the name,
+    //       I don't need that.
     char *dirpath = dirname(filepath);
     int i;
     for (i = 0; i < PathMax && dirpath[i]; ++i)

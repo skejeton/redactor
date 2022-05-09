@@ -22,8 +22,11 @@ int GetCharUnderCursor(Buffer *buf, Cursor at)
     Line l = buf->lines[at.line];
     int c;
 
-    for (int i = 0; (c = Uni_Utf8_NextVeryBad((const char **)&l.text) && i < at.column); ++i)
+
+    for (int i = 0; (c = Uni_Utf8_NextVeryBad((const char **)&l.text)) && i < at.column; ++i)
         ;
+
+    printf("GetCharUnderCursor %d %d %c\n", at.line, at.column, c ? c : '\n');
 
     return c ? c : '\n';
 }
@@ -38,13 +41,17 @@ static Redex_Match MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, con
     while (*seq && *seq != ']') {
         int seqChar = GetSeqChar(&seq);
         int bufChar = GetCharUnderCursor(buf, at);
-        Buffer_MoveCursor(buf, at, 0, 1);
 
         if (seqChar == bufChar) {
             resultMatch.success = true;
-            resultMatch.end = at;
+            resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
             break;
         }
+    }
+
+    // Go until ']' (For multiple char matches)
+    while (*seq && *seq != ']') {
+        seq++;
     }
 
 
@@ -58,7 +65,8 @@ static Redex_Match MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, con
 static Redex_Match MatchOneChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
 {
     int seqChar = GetSeqChar(&seq);
-    if (seqChar != GetCharUnderCursor(buf, at)) {
+    *endseq = seq;
+    if (seqChar == GetCharUnderCursor(buf, at)) {
         return (Redex_Match){.end = Buffer_MoveCursor(buf, at, 0, 1), .success = true};
     } else {
         return (Redex_Match){.success = false};

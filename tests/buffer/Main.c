@@ -1,11 +1,11 @@
-#include "../../tests/test.h"
+#include "../test.h"
 #include "src/Buffer.h"
 #include <string.h>
 
-const char *TestString = "Hello world\n"
-                         "Привет мир\n"
-                         "こんにちは世界\n"
-                         "Hej världen";
+static const char *TestString = "Hello world\n"
+                                "Привет мир\n"
+                                "こんにちは世界\n"
+                                "Hej världen";
 
 
 void TestGetRange()
