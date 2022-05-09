@@ -40,10 +40,22 @@ static Redex_Match MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, con
         int seqChar = GetSeqChar(&seq);
         int bufChar = GetCharUnderCursor(buf, at);
 
-        if (seqChar == bufChar) {
-            resultMatch.success = true;
-            resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
-            break;
+        // NOTE: Handle range
+        if (*seq == '-') {
+            seq++;
+            int startSeqChar = seqChar;
+            int endSeqChar = GetSeqChar(&seq);
+            if (bufChar >= startSeqChar && bufChar <= endSeqChar) {
+                resultMatch.success = true;
+                resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
+                break;
+            }
+        } else {
+            if (seqChar == bufChar) {
+                resultMatch.success = true;
+                resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
+                break;
+            }
         }
     }
 

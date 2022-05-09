@@ -27,7 +27,19 @@ static RedexTest redexTests[] = {
     {
         "Hello",
         {{"Hello", "Hello"}, {"Byebye", NULL}}
-    }, 
+    },
+    {
+        "[a-z]",
+        {{"amogus", "a"}, {"Amogus", NULL}}
+    },  
+    {
+        "[z-a]",
+        {{"amogus", NULL}, {"Amogus", NULL}}
+    },  
+    {
+        "[%]]",
+        {{"]", "]"}, {"%", NULL}}
+    },  
     {
         "[H][e][l][lこx][o]",
         {{"Helこo", "Helこo"}, {"Helxo", "Helxo"}, {"Helno", NULL}}
