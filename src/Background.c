@@ -10,7 +10,7 @@ void Background_Draw(Redactor *rs, Background *bg)
     if (texture_w == 0 || texture_h == 0)  {
         return;
     }
-
+    
     if (bg->bgm_flags | Bgm_Tiled) {
         int screen_w, screen_h;
         SDL_GetWindowSize(rs->render_sdl_window, &screen_w, &screen_h);
