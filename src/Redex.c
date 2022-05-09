@@ -26,8 +26,6 @@ int GetCharUnderCursor(Buffer *buf, Cursor at)
     for (int i = 0; (c = Uni_Utf8_NextVeryBad((const char **)&l.text)) && i < at.column; ++i)
         ;
 
-    printf("GetCharUnderCursor %d %d %c\n", at.line, at.column, c ? c : '\n');
-
     return c ? c : '\n';
 }
 
