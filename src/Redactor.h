@@ -90,7 +90,6 @@ struct {
 }
 typedef Redactor;
 
-
 // -- Util
 char *Util_Strdup(const char *s);
 char *Util_ReadFileStr(FILE *f);

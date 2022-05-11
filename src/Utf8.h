@@ -1,11 +1,11 @@
-static inline int Uni_Utf8_RuneLen(const char *s_)
+static inline int Utf8_RuneLen(const char *s_)
 {
     const unsigned char *s = (const unsigned char *)s_;
     const static int clas[32] = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5 };
     return *s == 0 ? 0 : clas[*s>>3];
 }
 
-static inline int Uni_Utf8_NextVeryBad(const char **s_)
+static inline int Utf8_NextVeryBad(const char **s_)
 {
     const static int clas[32] = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5 };
     unsigned char *s = (unsigned char*)*s_;
@@ -44,11 +44,11 @@ static inline int Uni_Utf8_NextVeryBad(const char **s_)
     return c;
 }
 
-static inline const char *Uni_Utf8_Strchr(const char *s, int ch)
+static inline const char *Utf8_Strchr(const char *s, int ch)
 {
     int c;
     const char *p = s;
-    while ((c = Uni_Utf8_NextVeryBad(&s))) {
+    while ((c = Utf8_NextVeryBad(&s))) {
         if (c == ch) {
             return p;       
         }
@@ -58,10 +58,10 @@ static inline const char *Uni_Utf8_Strchr(const char *s, int ch)
 }
 
 // NOTE: You probably don't want to use this
-static inline int Uni_Utf8_Strlen(const char *s)
+static inline int Utf8_Strlen(const char *s)
 {
     int i = 0;
-    while (Uni_Utf8_NextVeryBad(&s))
+    while (Utf8_NextVeryBad(&s))
         ++i;
     return i;
 }

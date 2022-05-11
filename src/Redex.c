@@ -1,13 +1,13 @@
 #include "Redactor.h"
 #include "Redex.h"
-#include "Unicode.h"
+#include "Utf8.h"
 
 static int GetSeqChar(const char **seq)
 {
-    int c = Uni_Utf8_NextVeryBad(seq);
+    int c = Utf8_NextVeryBad(seq);
 
     if (c == '%') {
-        c = Uni_Utf8_NextVeryBad(seq);   
+        c = Utf8_NextVeryBad(seq);   
     }
 
     return c;
@@ -23,7 +23,7 @@ int GetCharUnderCursor(Buffer *buf, Cursor at)
     int c;
 
 
-    for (int i = 0; (c = Uni_Utf8_NextVeryBad((const char **)&l.text)) && i < at.column; ++i)
+    for (int i = 0; (c = Utf8_NextVeryBad((const char **)&l.text)) && i < at.column; ++i)
         ;
 
     return c ? c : '\n';

@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "Unicode.h"
+#include "Utf8.h"
 #include "Redactor.h"
 
 // -- util
@@ -205,7 +205,7 @@ SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int
     int c;
     int initx = x;
     
-    while ((c = Uni_Utf8_NextVeryBad(&text))) {
+    while ((c = Utf8_NextVeryBad(&text))) {
         // NOTE: Prevent out of bounds
         if (c < 0 || c >= Redactor_GlyphmapGlyphMax) {
             continue;
@@ -244,7 +244,7 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
 
     const char *line = rs->file_buffer.lines[cursor.line].text;
 
-    for (int c, i = 0; (c = Uni_Utf8_NextVeryBad(&line)); ++i) {
+    for (int c, i = 0; (c = Utf8_NextVeryBad(&line)); ++i) {
         if (i == cursor.column) {
             break;
         }
@@ -329,7 +329,7 @@ void Redactor_SetCursorAtScreenPos(Redactor *rs, int x, int y)
     int mindist = x;
     int cx = 0;
 
-    for (int c; (c = Uni_Utf8_NextVeryBad(&linedata.text)); ++column) {
+    for (int c; (c = Utf8_NextVeryBad((const char**)&linedata.text)); ++column) {
         // NOTE: Prevent out of bounds
         if (c < 0 || c >= Redactor_GlyphmapGlyphMax) {
             continue;
@@ -469,12 +469,12 @@ int Redactor_Main(int argc, char *argv[])
 {
     Redactor rs = {0};
     Redactor_Init(&rs);
-
     Redactor_UseArgs(&rs, argc, argv);
-    Redactor_PrintMeta(&rs);
+
     while (rs.program_running) {
         Redactor_Cycle(&rs);
     }
+    
     Redactor_End(&rs);
     return 0;
 }
