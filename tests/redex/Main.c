@@ -3,12 +3,6 @@
 #include <stdbool.h>
 #define BIG_ENOUGH 128
 
-static const char *TestString = "Hello world\n"
-                                "Привет мир\n"
-                                "こんにちは世界\n"
-                                "Hej världen";
-
-
 struct RedexTestClause {
     // NOTE: NULL value will terminate the sequence
     const char *text;
@@ -29,9 +23,25 @@ static RedexTest redexTests[] = {
         {{"Hello", "Hello"}, {"Byebye", NULL}}
     },
     {
+        "\n",
+        {{"\n", "\n"}}
+    },
+    {
+        "te[\n_ ]st",
+        {{"te\nst", "te\nst"}, {"te_st", "te_st"}, {"te st", "te st"}}
+    },
+    {
         "[a-z]",
         {{"amogus", "a"}, {"Amogus", NULL}}
     },  
+    {
+        "[a-z]+",
+        {{"anyword", "anyword"}, {"love you", "love"}, {" ", NULL}}
+    },  
+    {
+        "[а-яА-Я]*",
+        {{"Кириллица", "Кириллица"}, {"Or", ""}, {"", ""}}
+    },
     {
         "[z-a]",
         {{"amogus", NULL}, {"Amogus", NULL}}
@@ -54,11 +64,11 @@ void Test_Redex_Main()
         for (int j = 0; test->sequence[j].text; ++j) {
             Buffer buf = Buffer_InitFromString(test->sequence[j].text);
             Redex_Match match = Redex_GetMatch(&buf, (Cursor){0, 0}, test->redex);
+
             if (test->sequence[j].match) {
                 Expect(match.success);
-           
                 char *r = Buffer_GetStringRange(&buf, (Range){{0, 0}, match.end});
-                Info("Match :: %s", r);
+                Info("Match :: '%s'", r);
                 free(r);
             } else {
                 Expect(!match.success);

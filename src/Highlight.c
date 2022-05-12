@@ -1,5 +1,5 @@
 #include "Redactor.h"
-#include "Unicode.h"
+#include "Utf8.h"
 
 const char *keytab[] = {
     "auto", "bool", "break", "case", "char",
@@ -47,7 +47,7 @@ char In_LineGetRelByte(Redactor *rs, Line rel, int line_no, int byteid)
     return byteid < 0 || byteid >= abs.text_size ? 0 : abs.text[byteid];
 }
 
-bool Highlight_Process_AnyKw(Redactor *rs, const char *keytab[], int *line_no, Line *line)
+bool In_ProcessAnyKw(Redactor *rs, const char *keytab[], int *line_no, Line *line)
 {
     // boundary check
     if (isalnum(In_LineGetRelByte(rs, *line, *line_no, -1)))
@@ -69,15 +69,14 @@ bool Highlight_Process_AnyKw(Redactor *rs, const char *keytab[], int *line_no, L
 }
 
 
-
-bool Highlight_Process_AnyChar(Redactor *rs, bool bounded, const char *charset, int *line_no, Line *line)
+bool In_ProcessAnyChar(Redactor *rs, bool bounded, const char *charset, int *line_no, Line *line)
 {
     int n = 0, c;
     char *prev = line->text;
     if (bounded && isalnum(In_LineGetRelByte(rs, *line, *line_no, -1))) {
         return false;
     }
-    while ((c = Uni_Utf8_NextVeryBad((const char **)&line->text)) && Uni_Utf8_Strchr(charset, c)) {
+    while ((c = Utf8_NextVeryBad((const char **)&line->text)) && Utf8_Strchr(charset, c)) {
         prev = line->text;
         n++;
     }
@@ -86,7 +85,7 @@ bool Highlight_Process_AnyChar(Redactor *rs, bool bounded, const char *charset, 
     return n > 0;
 }
 
-bool Highlight_Process_Wrapped(Redactor *rs, const char *begin, const char *end, const char *slash, int *line_no, Line *line)
+bool In_ProcessWrapped(Redactor *rs, const char *begin, const char *end, const char *slash, int *line_no, Line *line)
 {
     int sb = strlen(begin), se = strlen(end), ss = strlen(slash);
 
@@ -145,13 +144,13 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
                 Highlight_Rule *rule = &rules[i];
                 switch (rule->rule_type) {
                     case Highlight_Rule_AnyChar:
-                        match = Highlight_Process_AnyChar(rs, rule->rule_anychar.bounded, rule->rule_anychar.charset, &line_no, &line);
+                        match = In_ProcessAnyChar(rs, rule->rule_anychar.bounded, rule->rule_anychar.charset, &line_no, &line);
                     break;
                     case Highlight_Rule_AnyKw:
-                        match = Highlight_Process_AnyKw(rs, rule->rule_anykw, &line_no, &line);
+                        match = In_ProcessAnyKw(rs, rule->rule_anykw, &line_no, &line);
                     break;
                     case Highlight_Rule_Wrapped:
-                        match = Highlight_Process_Wrapped(rs, rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &line_no, &line);
+                        match = In_ProcessWrapped(rs, rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &line_no, &line);
                     break;
                 }
 
@@ -163,7 +162,7 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
 
             if (!match) {
                 line.text = start;
-                Uni_Utf8_NextVeryBad((const char **)&line.text);
+                Utf8_NextVeryBad((const char **)&line.text);
             }
 
 
@@ -186,7 +185,7 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
             SDL_Point delta = Redactor_DrawText(rs, color, start, position.x, position.y, col);
             // FIXME: Slow, and pretty much a hack anyway
             int c;
-            while ((c = Uni_Utf8_NextVeryBad((const char **)&start))) {
+            while ((c = Utf8_NextVeryBad((const char **)&start))) {
                 if (c == '\t') {
                     col += (8 - (col % 8));
                 } else {

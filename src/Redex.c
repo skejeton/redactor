@@ -2,7 +2,7 @@
 #include "Redex.h"
 #include "Utf8.h"
 
-static int GetSeqChar(const char **seq)
+static int In_GetSeqChar(const char **seq)
 {
     int c = Utf8_NextVeryBad(seq);
 
@@ -13,7 +13,7 @@ static int GetSeqChar(const char **seq)
     return c;
 }
 
-int GetCharUnderCursor(Buffer *buf, Cursor at)
+int In_GetCharUnderCursor(Buffer *buf, Cursor at)
 {
     if (at.line >= buf->lines_len) {
         return 0;
@@ -29,7 +29,7 @@ int GetCharUnderCursor(Buffer *buf, Cursor at)
     return c ? c : '\n';
 }
 
-static Redex_Match MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
 {
     Redex_Match resultMatch = {0};
 
@@ -37,14 +37,14 @@ static Redex_Match MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, con
     seq++;
 
     while (*seq && *seq != ']') {
-        int seqChar = GetSeqChar(&seq);
-        int bufChar = GetCharUnderCursor(buf, at);
+        int seqChar = In_GetSeqChar(&seq);
+        int bufChar = In_GetCharUnderCursor(buf, at);
 
         // NOTE: Handle range
         if (*seq == '-') {
             seq++;
             int startSeqChar = seqChar;
-            int endSeqChar = GetSeqChar(&seq);
+            int endSeqChar = In_GetSeqChar(&seq);
             if (bufChar >= startSeqChar && bufChar <= endSeqChar) {
                 resultMatch.success = true;
                 resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
@@ -64,7 +64,6 @@ static Redex_Match MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, con
         seq++;
     }
 
-
     // Skip ']'
     seq++;
     *endseq = seq;
@@ -72,31 +71,62 @@ static Redex_Match MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, con
     return resultMatch;
 }
 
-static Redex_Match MatchOneChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchOneChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
 {
-    int seqChar = GetSeqChar(&seq);
+    int seqChar = In_GetSeqChar(&seq);
     *endseq = seq;
-    if (seqChar == GetCharUnderCursor(buf, at)) {
+    if (seqChar == In_GetCharUnderCursor(buf, at)) {
         return (Redex_Match){.end = Buffer_MoveCursor(buf, at, 0, 1), .success = true};
     } else {
         return (Redex_Match){.success = false};
     }
 }
 
+Redex_Match In_MatchBasic(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+{
+    Redex_Match match;
+    if (*seq == '[') {
+        match = In_MatchAnyChar(buf, at, &seq, seq);
+    } else {
+        match = In_MatchOneChar(buf, at, &seq, seq);
+    }
+    *endseq = seq;
+    return match;
+}
+
+Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+{
+    const char *start = seq;
+    Redex_Match match = In_MatchBasic(buf, at, &seq, start);
+
+    if (*seq == '+') {
+        for (Redex_Match candidate = match; candidate.success; candidate = In_MatchBasic(buf, at, &seq, start)) {
+            match = candidate;
+            at = match.end;
+        }
+        seq++;
+    } else if (*seq == '*') {
+        match.success = true;
+        for (Redex_Match candidate = match; candidate.success; candidate = In_MatchBasic(buf, at, &seq, start)) {
+            match = candidate;
+            at = match.end;
+        }
+        seq++;
+    }
+
+    *endseq = seq;
+    return match;
+}
+
 Redex_Match Redex_GetMatch(Buffer *buf, Cursor at, const char *seq)
 {
     while (*seq) {
-        Redex_Match match;
-
-        if (*seq == '[') {
-            match = MatchAnyChar(buf, at, &seq, seq);
-        } else {
-            match = MatchOneChar(buf, at, &seq, seq);
-        }
+        Redex_Match match = In_MatchMany(buf, at, &seq, seq);
 
         if (!match.success) {
             return (Redex_Match){.success = false, .end = at};
         }
+
         at = match.end;
     }
 

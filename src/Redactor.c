@@ -474,7 +474,7 @@ int Redactor_Main(int argc, char *argv[])
     while (rs.program_running) {
         Redactor_Cycle(&rs);
     }
-    
+
     Redactor_End(&rs);
     return 0;
 }
