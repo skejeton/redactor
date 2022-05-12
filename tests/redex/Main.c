@@ -79,6 +79,7 @@ void Test_Redex_Main()
     for (int i = 0; i < sizeof(redexTests) / sizeof(redexTests[0]); ++i) {
         const RedexTest *test = &redexTests[i];
         for (int j = 0; test->sequence[j].text; ++j) {
+            printf("------ %s against %s\n", test->redex, test->sequence[j].text);
             Buffer buf = Buffer_InitFromString(test->sequence[j].text);
             Redex_Match match = Redex_GetMatch(&buf, (Cursor){0, 0}, test->redex);
 

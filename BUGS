@@ -1,1 +1,2 @@
 Doing IME input hangs the program
+Some regex sequences hang the program, none ever should
