@@ -27,7 +27,7 @@ static RedexTest redexTests[] = {
         {{"\n", "\n"}}
     },
     {
-        "te[\n_ ]st",
+        "te[%n_%s]st",
         {{"te\nst", "te\nst"}, {"te_st", "te_st"}, {"te st", "te st"}}
     },
     {

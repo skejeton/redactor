@@ -8,6 +8,11 @@ static int In_GetSeqChar(const char **seq)
 
     if (c == '%') {
         c = Utf8_NextVeryBad(seq);   
+        switch (c) {
+        case 't': return '\t';
+        case 'n': return '\n';
+        case 's': return ' ';
+        }
     }
 
     return c;
