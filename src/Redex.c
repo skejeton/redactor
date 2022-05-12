@@ -36,10 +36,14 @@ static int In_GetCharUnderCursor(Buffer *buf, Cursor at)
 
 static Redex_Match In_MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
 {
-    Redex_Match resultMatch = {0};
+    Redex_Match resultMatch = {.end = at};
 
     // Skip '['
     seq++;
+    bool negate = *seq == '^';
+    if (negate) {
+        seq++;
+    }
 
     while (*seq && *seq != ']') {
         int seqChar = In_GetSeqChar(&seq);
@@ -52,13 +56,11 @@ static Redex_Match In_MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, 
             int endSeqChar = In_GetSeqChar(&seq);
             if (bufChar >= startSeqChar && bufChar <= endSeqChar) {
                 resultMatch.success = true;
-                resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
                 break;
             }
         } else {
             if (seqChar == bufChar) {
                 resultMatch.success = true;
-                resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
                 break;
             }
         }
@@ -66,12 +68,18 @@ static Redex_Match In_MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, 
 
     // Go until ']' (For multiple char matches)
     while (*seq && *seq != ']') {
-        seq++;
+        In_GetSeqChar(&seq);
     }
 
     // Skip ']'
     seq++;
     *endseq = seq;
+
+    resultMatch.success = resultMatch.success != negate;
+
+    if (resultMatch.success) {
+        resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
+    }
 
     return resultMatch;
 }

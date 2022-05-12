@@ -44,6 +44,14 @@ static const RedexTest redexTests[] = {
         {{"amogus", "a"}, {"Amogus", NULL}}
     },  
     {
+        "#[^%n]*",
+        {{"#include <stdio.h>\ntest", "#include <stdio.h>"}, {"#\ntest", "#"}, {"\ntest", NULL}}
+    },  
+    {
+        "[^a-z_]",
+        {{"_", NULL}, {"e", NULL}, {"1", "1"}}
+    },  
+    {
         "[a-z]+",
         {{"anyword", "anyword"}, {"love you", "love"}, {" ", NULL}}
     },  
