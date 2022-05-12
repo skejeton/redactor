@@ -18,7 +18,7 @@ static int In_GetSeqChar(const char **seq)
     return c;
 }
 
-int In_GetCharUnderCursor(Buffer *buf, Cursor at)
+static int In_GetCharUnderCursor(Buffer *buf, Cursor at)
 {
     if (at.line >= buf->lines_len) {
         return 0;
@@ -87,19 +87,26 @@ static Redex_Match In_MatchOneChar(Buffer *buf, Cursor at, const char **endseq, 
     }
 }
 
-Redex_Match In_MatchBasic(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchGroup(Buffer *buf, Cursor at, const char **endseq, const char *seq);
+static Redex_Match In_MatchBasic(Buffer *buf, Cursor at, const char **endseq, const char *seq)
 {
     Redex_Match match;
-    if (*seq == '[') {
+    switch (*seq) {
+    case '[':
         match = In_MatchAnyChar(buf, at, &seq, seq);
-    } else {
+        break;
+    case '(':
+        match = In_MatchGroup(buf, at, &seq, seq);
+        break;
+    default:
         match = In_MatchOneChar(buf, at, &seq, seq);
+        break;
     }
     *endseq = seq;
     return match;
 }
 
-Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, const char *seq)
 {
     const char *start = seq;
     Redex_Match match = In_MatchBasic(buf, at, &seq, start);
@@ -117,12 +124,55 @@ Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, const char
             at = match.end;
         }
         seq++;
-    }
+    } 
 
     *endseq = seq;
     return match;
 }
 
+static Redex_Match In_MatchGroup(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+{
+    seq++;
+    bool success = true;
+
+    while (*seq && *seq != ')') {
+        Redex_Match match = In_MatchMany(buf, at, &seq, seq);
+
+        if (!match.success) {
+            success = false;
+            break;
+        }
+
+        at = match.end;
+    }
+
+    // Skip remaining regex syntax...
+    // This is a pretty bad way to do it since it's going to try to match with the buffer, we don't want it as it's pretty slow...
+    // There's 2 solutions I can think of right now:
+    // Skippers * will skip whatever the regex syntax.
+    //   Honestly I'm not a fan of this idea, since we will have to mirror parsing code which may lead to bugs and inconsistencies.
+    //
+    // Parser * will parse the regex, and then execute it. That makes it clear where the bounds are.
+    //   The disadvantage of a parser is that the parse time and storage of the parser strings may need many sparse memory allocations.
+    //   I will definitely try parsers, unless I find a better solution.
+    //
+    // We can't just skip characters until ')', because it will mess up nesting and escaping.
+    while (*seq && *seq != ')') {
+        In_MatchMany(buf, at, &seq, seq);
+    }
+
+    // Skip ')'
+    if (*seq) {
+        seq++;
+    }
+
+    *endseq = seq;
+    return (Redex_Match){.success = success, .end = at};
+}
+
+// TODO: This is almost an identical copy of In_MatchGroup,
+//       the only difference is that In_MatchGroup handles parentheses.
+//       There could be way to avoid duplication here.
 Redex_Match Redex_GetMatch(Buffer *buf, Cursor at, const char *seq)
 {
     while (*seq) {

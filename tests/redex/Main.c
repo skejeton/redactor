@@ -1,5 +1,6 @@
 #include "../test.h"
 #include "src/Redex.h"
+#include <string.h>
 #include <stdbool.h>
 #define BIG_ENOUGH 128
 
@@ -29,6 +30,14 @@ static const RedexTest redexTests[] = {
     {
         "te[%n_%s]st",
         {{"te\nst", "te\nst"}, {"te_st", "te_st"}, {"te st", "te st"}}
+    },
+    {
+        "([a-z][0-9])+",
+        {{"a1b2c3", "a1b2c3"}, {"a1b2cc", "a1b2"}, {"aa", NULL}}
+    },
+        {
+        "%|(([a-z][0-9])+%|)+",
+        {{"|a1b2|c3|", "|a1b2|c3|"}, {"|a1|b2cc|", "|a1|"}, {"|aa", NULL}, {"|", NULL}, {"aa", NULL}}
     },
     {
         "[a-z]",
@@ -68,6 +77,7 @@ void Test_Redex_Main()
             if (test->sequence[j].match) {
                 Expect(match.success);
                 char *r = Buffer_GetStringRange(&buf, (Range){{0, 0}, match.end});
+                Expect(strcmp(r, test->sequence[j].match) == 0);
                 Info("Match :: '%s'", r);
                 free(r);
             } else {
