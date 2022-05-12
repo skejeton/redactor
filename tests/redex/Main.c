@@ -17,7 +17,7 @@ struct RedexTest {
 }
 typedef RedexTest;
 
-static RedexTest redexTests[] = {
+static const RedexTest redexTests[] = {
     {
         "Hello",
         {{"Hello", "Hello"}, {"Byebye", NULL}}
@@ -60,7 +60,7 @@ static RedexTest redexTests[] = {
 void Test_Redex_Main() 
 {
     for (int i = 0; i < sizeof(redexTests) / sizeof(redexTests[0]); ++i) {
-        RedexTest *test = &redexTests[i];
+        const RedexTest *test = &redexTests[i];
         for (int j = 0; test->sequence[j].text; ++j) {
             Buffer buf = Buffer_InitFromString(test->sequence[j].text);
             Redex_Match match = Redex_GetMatch(&buf, (Cursor){0, 0}, test->redex);
