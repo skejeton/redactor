@@ -34,9 +34,20 @@ Cursor Buffer_InsertUTF8(Buffer *buf, Cursor cursor, const char *text);
 Cursor Buffer_RemoveCharacterUnder(Buffer *buf, Cursor under);
 Cursor Buffer_MoveCursor(Buffer *buf, Cursor cursor, int lines, int cols);
 Cursor Buffer_EndCursor(Buffer *buf);
+// a < b  => -1
+// a == b =>  0
+// a > b  =>  1
+static inline int Buffer_CompareCursor(Cursor a, Cursor b) {
+    if (a.line == b.line) {
+        return (a.column < b.column) * -1 + (a.column > b.column) * 1;
+    } else {
+        return (a.line < b.line) * -1 + (a.line > b.line) * 1;
+    }
+}
+
+char *Buffer_GetStringRange(Buffer *buf, Range range);
 Buffer Buffer_Init();
 Buffer Buffer_InitFromString(const char *s);
-char *Buffer_GetStringRange(Buffer *buf, Range range);
 void Buffer_Deinit(Buffer *buf);
 
 #endif

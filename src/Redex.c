@@ -119,20 +119,38 @@ static Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, con
     const char *start = seq;
     Redex_Match match = In_MatchBasic(buf, at, &seq, start);
 
-    if (*seq == '+') {
-        for (Redex_Match candidate = match; candidate.success; candidate = In_MatchBasic(buf, at, &seq, start)) {
+    switch (*seq) {
+    case '+':
+        for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end, at) > 0; candidate = In_MatchBasic(buf, at, &seq, start)) {
             match = candidate;
             at = match.end;
         }
         seq++;
-    } else if (*seq == '*') {
-        match.success = true;
-        for (Redex_Match candidate = match; candidate.success; candidate = In_MatchBasic(buf, at, &seq, start)) {
-            match = candidate;
-            at = match.end;
+        break;
+    case '*':
+        // TODO: This check may be unnecessary if we returned back to the start on failed matches
+        if (!match.success) {
+            match.success = true;
+            match.end = at;
+        }
+        else {
+            for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end, at) > 0; candidate = In_MatchBasic(buf, at, &seq, start)) {
+                match = candidate;
+                at = match.end;
+            }
         }
         seq++;
-    } 
+        break;
+    case '?':
+        if (!match.success) {
+            match.success = true;
+            match.end = at;
+        }
+        seq++;
+        break;
+    default:
+        break;
+    }
 
     *endseq = seq;
     return match;

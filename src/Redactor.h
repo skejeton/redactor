@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include "Buffer.h"
 #include "Redex.h"
+#include "Util.h"
 
 #define Redactor_GlyphmapChunkMax 1024
 #define Redactor_GlyphmapGlyphMax (Redactor_GlyphmapChunkMax * 256)
@@ -89,13 +90,6 @@ struct {
     Input         input;
 }
 typedef Redactor;
-
-// -- Util
-char *Util_Strdup(const char *s);
-char *Util_ReadFileStr(FILE *f);
-char *Util_GetProgramPath();
-char *Util_ConcatPaths(const char *path_a, const char *path_b);
-void Util_DieErr(const char *fmt, ...);
 
 // -- Background
 void Background_Draw(Redactor *rs, Background *bg);
