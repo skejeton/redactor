@@ -1,5 +1,6 @@
 #include "Redactor.h"
 #include "Utf8.h"
+#include "Redex.h"
 
 const char *keytab[] = {
     "auto", "bool", "break", "case", "char",
@@ -20,6 +21,7 @@ enum {
     Highlight_Rule_AnyChar,
     Highlight_Rule_AnyKw,
     Highlight_Rule_Wrapped,
+    Highlight_Rule_Redex,
 };
 
 struct {
@@ -34,6 +36,7 @@ struct {
         struct { 
             const char *begin, *end, *slash;
         } rule_wrapped;
+        const char *rule_redex;
     };
 }
 typedef Highlight_Rule;
@@ -112,6 +115,40 @@ bool In_ProcessWrapped(Redactor *rs, const char *begin, const char *end, const c
     }
 }
 
+void In_TranslateCursor(Buffer *buf, Cursor cursor, Line *out_line, int *out_lineNo)
+{
+    *out_lineNo = cursor.line;
+    *out_line = buf->lines[cursor.line];
+
+    for (int i = 0; i < cursor.column && Utf8_NextVeryBad((const char **)&out_line->text); ++i)
+        ;
+}
+
+Cursor In_LocateCursor(Buffer *buf, Line line, int lineNo) 
+{
+    Cursor out_cursor = { lineNo, 0 };
+    Line iterLine = buf->lines[lineNo];
+
+    while (iterLine.text != line.text) {
+        Utf8_NextVeryBad((const char **)&iterLine.text);
+        out_cursor.column += 1;
+    }
+
+    return out_cursor;
+}
+
+bool In_ProcessRedex(Redactor *rs, const char *redex, int *lineNo, Line *line) 
+{
+    Redex_Match match = Redex_GetMatch(&rs->file_buffer, In_LocateCursor(&rs->file_buffer, *line, *lineNo), redex);
+
+    if (match.success) {
+        In_TranslateCursor(&rs->file_buffer, match.end, line, lineNo);
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void Highlight_DrawHighlightedBuffer(Redactor *rs)
 {
     SDL_Point position = {rs->render_scroll.x, rs->render_scroll.y};
@@ -119,12 +156,13 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
 
     Highlight_Rule rules[32];
     int rule_count = 0;
-    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyChar, Redactor_Color_Yellow, {.rule_anychar = {"0123456789", true}}};
-    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Pinkish, {.rule_wrapped = {"\"", "\"", "\\"}}};
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_White, {.rule_redex= "[a-zA-Z_]+[a-zA-Z_0-9]*"}};
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Yellow, {.rule_redex= "[0-9]+"}};
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Pinkish, {.rule_redex = "\"[^\"]*\"?"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Pinkish, {.rule_wrapped = {"\'", "\'", "\\"}}};
-    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"#", "\n", ""}}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"/*", "*/", ""}}};
-    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"//", "\n", ""}}};
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Gray, {.rule_redex = "//[^%n]*"}};
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"#", "\n", ""}}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Green, {.rule_anykw = keytab}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Pinkish, {.rule_anykw = symtab}};
     
@@ -143,14 +181,17 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
             for (int i = 0; i < rule_count; ++i)  {
                 Highlight_Rule *rule = &rules[i];
                 switch (rule->rule_type) {
-                    case Highlight_Rule_AnyChar:
-                        match = In_ProcessAnyChar(rs, rule->rule_anychar.bounded, rule->rule_anychar.charset, &line_no, &line);
+                case Highlight_Rule_AnyChar:
+                    match = In_ProcessAnyChar(rs, rule->rule_anychar.bounded, rule->rule_anychar.charset, &line_no, &line);
                     break;
-                    case Highlight_Rule_AnyKw:
-                        match = In_ProcessAnyKw(rs, rule->rule_anykw, &line_no, &line);
+                case Highlight_Rule_AnyKw:
+                    match = In_ProcessAnyKw(rs, rule->rule_anykw, &line_no, &line);
                     break;
-                    case Highlight_Rule_Wrapped:
-                        match = In_ProcessWrapped(rs, rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &line_no, &line);
+                case Highlight_Rule_Wrapped:
+                    match = In_ProcessWrapped(rs, rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &line_no, &line);
+                    break;
+                case Highlight_Rule_Redex:
+                    match = In_ProcessRedex(rs, rule->rule_redex, &line_no, &line);
                     break;
                 }
 

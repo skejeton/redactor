@@ -1,5 +1,5 @@
 #include "Redactor.h"
-#include "Unicode.h"
+#include "Utf8.h"
 #include <stdlib.h>
 #include <string.h>
 #include "Mem2.h"
@@ -11,11 +11,11 @@ Cursor InsertUTF8Solo(Buffer *buf, Cursor cursor, const char *text)
     char *new_line_start = malloc(sizeof(char) * (new_size + 1));
     char *new_line = new_line_start;
     int cursor_pos_byte = 0;
-    int unilen = Uni_Utf8_Strlen(text);
+    int unilen = Utf8_Strlen(text);
     const char *line_iter = line->text;
 
     // --find cursor
-    for (int i = 0; i != cursor.column && Uni_Utf8_NextVeryBad(&line_iter); ++i)
+    for (int i = 0; i != cursor.column && Utf8_NextVeryBad(&line_iter); ++i)
         ;
     cursor_pos_byte = line_iter - line->text;
 
@@ -92,7 +92,7 @@ void AddLine(Buffer *buf, const char *line)
     size_t text_size = strlen(line);
     char *text = strcpy(malloc(text_size+1), line);
 
-    buf->lines[buf->lines_len  ].text_len  = Uni_Utf8_Strlen(text);
+    buf->lines[buf->lines_len  ].text_len  = Utf8_Strlen(text);
     buf->lines[buf->lines_len  ].text_size = text_size;
     buf->lines[buf->lines_len++].text      = text;
 }
@@ -106,7 +106,7 @@ Cursor SplitLineAt(Buffer *buf, Cursor under)
     const char *line_iter = line->text;
     
     // --find cursor
-    for (int i = 0; i != under.column && Uni_Utf8_NextVeryBad(&line_iter); ++i)
+    for (int i = 0; i != under.column && Utf8_NextVeryBad(&line_iter); ++i)
         ;
     line->text_size = line_iter-line->text;
 
@@ -121,7 +121,7 @@ Cursor SplitLineAt(Buffer *buf, Cursor under)
 size_t GetLineColOfs(Line l, int32_t column)
 {
     char *start = l.text;
-    while (column-- && Uni_Utf8_NextVeryBad((const char **)&l.text))
+    while (column-- && Utf8_NextVeryBad((const char **)&l.text))
         ;
 
     return l.text-start;
@@ -149,7 +149,7 @@ Cursor Buffer_RemoveCharacterUnder(Buffer *buf, Cursor under)
         const char *p_line_iter = line->text;
 
                 // --find cursor
-        for (int i = 0; i != under.column && Uni_Utf8_NextVeryBad((p_line_iter = line_iter, &line_iter)); ++i)
+        for (int i = 0; i != under.column && Utf8_NextVeryBad((p_line_iter = line_iter, &line_iter)); ++i)
             ;
 
         memmove(line->text + (p_line_iter - line->text), line->text + (line_iter - line->text), sizeof(char) * (line->text_size - (line_iter - line->text) + 1));
@@ -227,7 +227,7 @@ char *Buffer_GetStringRange(Buffer *buf, Range range)
 
         if (l == range.from.line) {
             // go to range start
-            for (int i = 0; i < range.from.column && Uni_Utf8_NextVeryBad((const char**)&line.text); ++i)
+            for (int i = 0; i < range.from.column && Utf8_NextVeryBad((const char**)&line.text); ++i)
                 ;
             lineSize = strlen(line.text);
         }
@@ -238,7 +238,7 @@ char *Buffer_GetStringRange(Buffer *buf, Range range)
             if (range.from.line == range.to.line) {
                 endColumn = range.to.column - range.from.column;
             }
-            for (int i = 0; i < endColumn && Uni_Utf8_NextVeryBad((const char**)&line.text); ++i)
+            for (int i = 0; i < endColumn && Utf8_NextVeryBad((const char**)&line.text); ++i)
                 ;
 
             lineSize = line.text-start;
