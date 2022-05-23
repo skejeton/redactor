@@ -9,31 +9,31 @@ static inline int Utf8_RuneLen(const char *s_)
 }
 
 static inline size_t Utf8_Fetch(uint32_t *out, const char *s_) {
-	const unsigned char *s = (const unsigned char*)s_;
-	if ((*s & 0xC0) != 0xC0) {
-		*out = *s;
-		return *s > 0;
-	}
+    const unsigned char *s = (const unsigned char*)s_;
+    if ((*s & 0xC0) != 0xC0) {
+        *out = *s;
+        return *s > 0;
+    }
 
-	const static size_t clas[32] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5};
-	size_t cl = clas[*s>>3];
+    const static size_t clas[32] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5};
+    size_t cl = clas[*s>>3];
 
-	for (size_t i = 1; i < cl; ++i) {
-		if ((s[i] & 0xC0) == 0xC0 || (s[i] & 0x80) == 0) {
-			*out = s[0];
-			return 1;
-		}
-	}
+    for (size_t i = 1; i < cl; ++i) {
+        if ((s[i] & 0xC0) == 0xC0 || (s[i] & 0x80) == 0) {
+            *out = s[0];
+            return 1;
+        }
+    }
 
-	switch (cl) {
-        // Case 0 and 1 will not happen here as they are handled in first if statement.
-		case 2: *out = ((s[0]&0x1f)<<6) | (s[1]&0x3f); break;
-		case 3: *out = ((s[0]&0xf)<<12) | ((s[1]&0x3f)<<6) | (s[2]&0x3f); break;
-		case 4: *out = ((s[0]&0x7)<<18) | ((s[1]&0x3f)<<12) | ((s[2]&0x3f)<<6) | (s[3]&0x3f); break;
-		case 5: *out = 0; return 0; // This is an errorneous case, 5 isn't defined in UTF-8
-	}
+    switch (cl) {
+    // Case 0 and 1 will not happen here as they are handled in first if statement.
+    case 2: *out = ((s[0]&0x1f)<<6) | (s[1]&0x3f); break;
+    case 3: *out = ((s[0]&0xf)<<12) | ((s[1]&0x3f)<<6) | (s[2]&0x3f); break;
+    case 4: *out = ((s[0]&0x7)<<18) | ((s[1]&0x3f)<<12) | ((s[2]&0x3f)<<6) | (s[3]&0x3f); break;
+    case 5: *out = 0; return 0; // This is an errorneous case, 5 isn't defined in UTF-8
+    }
 
-	return cl;
+    return cl;
 }
 
 static inline int Utf8_NextVeryBad(const char **s)
