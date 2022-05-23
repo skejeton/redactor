@@ -44,7 +44,7 @@ static const RedexTest redexTests[] = {
         {{"\n", "\n"}}
     },
     {
-        "te[%n_%s]st",
+        "te[\\n_\\s]st",
         {{"te\nst", "te\nst"}, {"te_st", "te_st"}, {"te st", "te st"}}
     },
     {
@@ -52,7 +52,7 @@ static const RedexTest redexTests[] = {
         {{"a1b2c3", "a1b2c3"}, {"a1b2cc", "a1b2"}, {"aa", NULL}}
     },
         {
-        "%|(([a-z][0-9])+%|)+",
+        "\\|(([a-z][0-9])+\\|)+",
         {{"|a1b2|c3|", "|a1b2|c3|"}, {"|a1|b2cc|", "|a1|"}, {"|aa", NULL}, {"|", NULL}, {"aa", NULL}}
     },
     {
@@ -60,7 +60,7 @@ static const RedexTest redexTests[] = {
         {{"amogus", "a"}, {"Amogus", NULL}}
     },  
     {
-        "#[^%n]*",
+        "#[^\\n]*",
         {{"#include <stdio.h>\ntest", "#include <stdio.h>"}, {"#\ntest", "#"}, {"\ntest", NULL}}
     },  
     {
@@ -80,9 +80,25 @@ static const RedexTest redexTests[] = {
         {{"amogus", NULL}, {"Amogus", NULL}}
     },  
     {
-        "[%]]",
+        "[\\]]",
         {{"]", "]"}, {"%", NULL}}
     },  
+    {
+        "\\\\",
+        {{"\\", "\\"}, {"%", NULL}}
+    },  
+    {
+        "\\\\",
+        {{"\\", "\\"}, {"%", NULL}}
+    },
+    {
+        ".+",
+        {{"Hello world", "Hello world"}, {"こんにちは世界", "こんにちは世界"}, {"", NULL}}
+    },
+    {
+        "\\.",
+        {{".", "."}, {"blah", NULL}}
+    },
     {
         "[H][e][l][lこx][o]",
         {{"Helこo", "Helこo"}, {"Helxo", "Helxo"}, {"Helno", NULL}}

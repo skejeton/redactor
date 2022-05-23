@@ -6,7 +6,7 @@ static int In_GetSeqChar(const char **seq)
 {
     int c = Utf8_NextVeryBad(seq);
 
-    if (c == '%') {
+    if (c == '\\') {
         c = Utf8_NextVeryBad(seq);   
         switch (c) {
         case 't': return '\t';
@@ -34,7 +34,7 @@ static int In_GetCharUnderCursor(Buffer *buf, Cursor at)
     return c ? c : '\n';
 }
 
-static Redex_Match In_MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchCharGroup(Buffer *buf, Cursor at, const char **endseq, const char *seq)
 {
     Redex_Match resultMatch = {.end = at};
 
@@ -95,16 +95,31 @@ static Redex_Match In_MatchOneChar(Buffer *buf, Cursor at, const char **endseq, 
     }
 }
 
+static Redex_Match In_MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+{
+    // Skip `.`
+    *endseq += 1;
+
+    Cursor endCursor = Buffer_MoveCursor(buf, at, 0, 1);
+    return (Redex_Match) {
+        .success = Buffer_CompareCursor(endCursor, at) != 0,
+        .end = endCursor
+    };
+}
+
 static Redex_Match In_MatchGroup(Buffer *buf, Cursor at, const char **endseq, const char *seq);
 static Redex_Match In_MatchBasic(Buffer *buf, Cursor at, const char **endseq, const char *seq)
 {
     Redex_Match match;
     switch (*seq) {
     case '[':
-        match = In_MatchAnyChar(buf, at, &seq, seq);
+        match = In_MatchCharGroup(buf, at, &seq, seq);
         break;
     case '(':
         match = In_MatchGroup(buf, at, &seq, seq);
+        break;
+    case '.':
+        match = In_MatchAnyChar(buf, at, &seq, seq);
         break;
     default:
         match = In_MatchOneChar(buf, at, &seq, seq);

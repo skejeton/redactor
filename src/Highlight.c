@@ -161,7 +161,7 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Pinkish, {.rule_redex = "\"[^\"]*\"?"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Pinkish, {.rule_wrapped = {"\'", "\'", "\\"}}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"/*", "*/", ""}}};
-    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Gray, {.rule_redex = "//[^%n]*"}};
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Gray, {.rule_redex = "//[^\\n]*"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"#", "\n", ""}}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Green, {.rule_anykw = keytab}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Pinkish, {.rule_anykw = symtab}};
