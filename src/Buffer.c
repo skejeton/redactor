@@ -216,11 +216,10 @@ Cursor Buffer_InsertUTF8(Buffer *buf, Cursor cursor, const char *text)
 
 char *Buffer_GetStringRange(Buffer *buf, Range range)
 {
-    Line line = buf->lines[range.from.line];
     size_t strSize = 0;
     char *strDat = 0;
 
-    for (int l = range.from.line; l <= range.to.line; line = buf->lines[++l]) {
+    for (int l = range.from.line; l <= range.to.line; ++l) {
         Line line = buf->lines[l];
         size_t lineSize = line.text_size;
         bool newline = true;

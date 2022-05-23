@@ -5,9 +5,10 @@ TEST_HEADERS = $(HEADERS)
 OBJECTS = $(FILES:.c=.o)
 TEST_OBJECTS = $(TEST_FILES:.c=.o) 
 LDFLAGS = -lSDL2 -lSDL2_ttf -lm -lc
-CCFLAGS = -I. -g -fsanitize=address -Wall
+ASANFLAGS ?= -fsanitize=address
+ASAN ?= -lasan 
+CCFLAGS = -I. -g -Wall $(ASANFLAGS)
 #CCFLAGS = -O3 -g -flto
-ASAN = -lasan 
 EXECUTABLE = ./bin/redactor
 TEST_EXECUTABLE = ./bin/test
 

@@ -1,13 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-static inline int Utf8_RuneLen(const char *s_)
-{
-    const unsigned char *s = (const unsigned char *)s_;
-    const static int clas[32] = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5 };
-    return *s == 0 ? 0 : clas[*s>>3];
-}
-
 static inline size_t Utf8_Fetch(uint32_t *out, const char *s_) {
     const unsigned char *s = (const unsigned char*)s_;
     if ((*s & 0xC0) != 0xC0) {
@@ -26,11 +19,10 @@ static inline size_t Utf8_Fetch(uint32_t *out, const char *s_) {
     }
 
     switch (cl) {
-    // Case 0 and 1 will not happen here as they are handled in first if statement.
     case 2: *out = ((s[0]&0x1f)<<6) | (s[1]&0x3f); break;
     case 3: *out = ((s[0]&0xf)<<12) | ((s[1]&0x3f)<<6) | (s[2]&0x3f); break;
     case 4: *out = ((s[0]&0x7)<<18) | ((s[1]&0x3f)<<12) | ((s[2]&0x3f)<<6) | (s[3]&0x3f); break;
-    case 5: *out = 0; return 0; // This is an errorneous case, 5 isn't defined in UTF-8
+    default: *out = 0; return 0; 
     }
 
     return cl;
