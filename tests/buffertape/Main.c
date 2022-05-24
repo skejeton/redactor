@@ -10,7 +10,7 @@ void Test_BufferTape_Main()
         Expect(BufferTape_Next(&tape) == '\n');
         Info("%d %d", tape.cursor.line, tape.cursor.column);
         Expect(tape.cursor.line == 1 && tape.cursor.column == 0);
-		Buffer_Deinit(&buf);
+        Buffer_Deinit(&buf);
     }
     {
         Buffer buf = Buffer_InitFromString("Testこ\n123");

@@ -127,9 +127,9 @@ void Test_Redex_Main()
                 free(r);
             } else {
                 Expect(!match.success);
-				if (match.success) {
-					Info("Match :: %d, %d", match.end.cursor.line, match.end.cursor.column);
-				}	
+                if (match.success) {
+                    Info("Match :: %d, %d", match.end.cursor.line, match.end.cursor.column);
+                }    
             }
             Buffer_Deinit(&buf);
         }

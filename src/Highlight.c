@@ -139,12 +139,12 @@ Cursor In_LocateCursor(Buffer *buf, Line line, int lineNo)
 
 bool In_ProcessRedex(Redactor *rs, const char *redex, int *lineNo, Line *line) 
 {
-	BufferTape tape = BufferTape_InitAt(&rs->file_buffer, In_LocateCursor(&rs->file_buffer, *line, *lineNo));
+    BufferTape tape = BufferTape_InitAt(&rs->file_buffer, In_LocateCursor(&rs->file_buffer, *line, *lineNo));
     Redex_Match match = Redex_GetMatch(tape, redex);
 
     if (match.success) {
-		*lineNo = match.end.cursor.line;
-		*line = match.end.line;
+        *lineNo = match.end.cursor.line;
+        *line = match.end.line;
         return true;
     } else {
         return false;

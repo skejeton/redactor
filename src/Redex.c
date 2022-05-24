@@ -63,10 +63,10 @@ static Redex_Match In_MatchCharGroup(BufferTape tape, const char **endseq, const
     resultMatch.success = resultMatch.success != negate;
 
     if (resultMatch.success) {
-		BufferTape_Next(&tape);
+        BufferTape_Next(&tape);
     }
 
-	resultMatch.end = tape;
+    resultMatch.end = tape;
     return resultMatch;
 }
 
@@ -75,11 +75,11 @@ static Redex_Match In_MatchOneChar(BufferTape tape, const char **endseq, const c
     int seqChar = In_GetSeqChar(&seq);
     *endseq = seq;
     if (seqChar == BufferTape_Get(&tape)) {
-		BufferTape_Next(&tape);
-		return (Redex_Match){.end = tape, .success = true};
+        BufferTape_Next(&tape);
+        return (Redex_Match){.end = tape, .success = true};
     } else {
-		return (Redex_Match){.end = tape, .success = false};
-	}
+        return (Redex_Match){.end = tape, .success = false};
+    }
 }
 
 static Redex_Match In_MatchAnyChar(BufferTape tape, const char **endseq, const char *seq)
@@ -87,8 +87,8 @@ static Redex_Match In_MatchAnyChar(BufferTape tape, const char **endseq, const c
     // Skip `.`
     *endseq += 1;
 
-	Cursor oldCursor = tape.cursor;
-	BufferTape_Next(&tape);
+    Cursor oldCursor = tape.cursor;
+    BufferTape_Next(&tape);
     return (Redex_Match) {
         .success = Buffer_CompareCursor(oldCursor, tape.cursor) != 0,
         .end = tape 

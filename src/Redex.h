@@ -7,7 +7,7 @@
 
 struct {
     bool success;
-	BufferTape end;
+    BufferTape end;
 }
 typedef Redex_Match;
 
