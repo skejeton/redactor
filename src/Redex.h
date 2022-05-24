@@ -2,14 +2,15 @@
 #define R_REDEX_H
 
 #include "Buffer.h"
+#include "BufferTape.h"
 #include <stdbool.h>
 
 struct {
     bool success;
-    Cursor end;
+	BufferTape end;
 }
 typedef Redex_Match;
 
-Redex_Match Redex_GetMatch(Buffer *buf, Cursor at, const char *seq);
+Redex_Match Redex_GetMatch(BufferTape tape, const char *seq);
 
 #endif

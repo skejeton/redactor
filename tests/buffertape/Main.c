@@ -4,6 +4,15 @@
 void Test_BufferTape_Main()
 {
     {
+        Buffer buf = Buffer_InitFromString("\n");
+        BufferTape tape = BufferTape_Init(&buf);
+        Expect(tape.cursor.line == 0 && tape.cursor.column == 0);
+        Expect(BufferTape_Next(&tape) == '\n');
+        Info("%d %d", tape.cursor.line, tape.cursor.column);
+        Expect(tape.cursor.line == 1 && tape.cursor.column == 0);
+		Buffer_Deinit(&buf);
+    }
+    {
         Buffer buf = Buffer_InitFromString("Testこ\n123");
         BufferTape tape = BufferTape_Init(&buf);
         Expect(tape.cursor.line == 0 && tape.cursor.column == 0);

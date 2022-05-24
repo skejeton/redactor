@@ -1,6 +1,7 @@
 #include "Redactor.h"
 #include "Redex.h"
 #include "Utf8.h"
+#include "BufferTape.h"
 
 static int In_GetSeqChar(const char **seq)
 {
@@ -18,25 +19,9 @@ static int In_GetSeqChar(const char **seq)
     return c;
 }
 
-static int In_GetCharUnderCursor(Buffer *buf, Cursor at)
+static Redex_Match In_MatchCharGroup(BufferTape tape, const char **endseq, const char *seq)
 {
-    if (at.line >= buf->lines_len) {
-        return 0;
-    }
-
-    Line l = buf->lines[at.line];
-    int c;
-
-
-    for (int i = 0; (c = Utf8_NextVeryBad((const char **)&l.text)) && i < at.column; ++i)
-        ;
-
-    return c ? c : '\n';
-}
-
-static Redex_Match In_MatchCharGroup(Buffer *buf, Cursor at, const char **endseq, const char *seq)
-{
-    Redex_Match resultMatch = {.end = at};
+    Redex_Match resultMatch = {.end = tape};
 
     // Skip '['
     seq++;
@@ -47,7 +32,7 @@ static Redex_Match In_MatchCharGroup(Buffer *buf, Cursor at, const char **endseq
 
     while (*seq && *seq != ']') {
         int seqChar = In_GetSeqChar(&seq);
-        int bufChar = In_GetCharUnderCursor(buf, at);
+        int bufChar = BufferTape_Get(&tape);
 
         // NOTE: Handle range
         if (*seq == '-') {
@@ -78,67 +63,70 @@ static Redex_Match In_MatchCharGroup(Buffer *buf, Cursor at, const char **endseq
     resultMatch.success = resultMatch.success != negate;
 
     if (resultMatch.success) {
-        resultMatch.end = Buffer_MoveCursor(buf, at, 0, 1);
+		BufferTape_Next(&tape);
     }
 
+	resultMatch.end = tape;
     return resultMatch;
 }
 
-static Redex_Match In_MatchOneChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchOneChar(BufferTape tape, const char **endseq, const char *seq)
 {
     int seqChar = In_GetSeqChar(&seq);
     *endseq = seq;
-    if (seqChar == In_GetCharUnderCursor(buf, at)) {
-        return (Redex_Match){.end = Buffer_MoveCursor(buf, at, 0, 1), .success = true};
+    if (seqChar == BufferTape_Get(&tape)) {
+		BufferTape_Next(&tape);
+		return (Redex_Match){.end = tape, .success = true};
     } else {
-        return (Redex_Match){.success = false};
-    }
+		return (Redex_Match){.end = tape, .success = false};
+	}
 }
 
-static Redex_Match In_MatchAnyChar(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchAnyChar(BufferTape tape, const char **endseq, const char *seq)
 {
     // Skip `.`
     *endseq += 1;
 
-    Cursor endCursor = Buffer_MoveCursor(buf, at, 0, 1);
+	Cursor oldCursor = tape.cursor;
+	BufferTape_Next(&tape);
     return (Redex_Match) {
-        .success = Buffer_CompareCursor(endCursor, at) != 0,
-        .end = endCursor
+        .success = Buffer_CompareCursor(oldCursor, tape.cursor) != 0,
+        .end = tape 
     };
 }
 
-static Redex_Match In_MatchGroup(Buffer *buf, Cursor at, const char **endseq, const char *seq);
-static Redex_Match In_MatchBasic(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchGroup(BufferTape tape, const char **endseq, const char *seq);
+static Redex_Match In_MatchBasic(BufferTape tape, const char **endseq, const char *seq)
 {
     Redex_Match match;
     switch (*seq) {
     case '[':
-        match = In_MatchCharGroup(buf, at, &seq, seq);
+        match = In_MatchCharGroup(tape, &seq, seq);
         break;
     case '(':
-        match = In_MatchGroup(buf, at, &seq, seq);
+        match = In_MatchGroup(tape, &seq, seq);
         break;
     case '.':
-        match = In_MatchAnyChar(buf, at, &seq, seq);
+        match = In_MatchAnyChar(tape, &seq, seq);
         break;
     default:
-        match = In_MatchOneChar(buf, at, &seq, seq);
+        match = In_MatchOneChar(tape, &seq, seq);
         break;
     }
     *endseq = seq;
     return match;
 }
 
-static Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchMany(BufferTape tape, const char **endseq, const char *seq)
 {
     const char *start = seq;
-    Redex_Match match = In_MatchBasic(buf, at, &seq, start);
+    Redex_Match match = In_MatchBasic(tape, &seq, start);
 
     switch (*seq) {
     case '+':
-        for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end, at) > 0; candidate = In_MatchBasic(buf, at, &seq, start)) {
+        for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end.cursor, tape.cursor) > 0; candidate = In_MatchBasic(tape, &seq, start)) {
             match = candidate;
-            at = match.end;
+            tape = match.end;
         }
         seq++;
         break;
@@ -146,12 +134,12 @@ static Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, con
         // TODO: This check may be unnecessary if we returned back to the start on failed matches
         if (!match.success) {
             match.success = true;
-            match.end = at;
+            match.end = tape;
         }
         else {
-            for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end, at) > 0; candidate = In_MatchBasic(buf, at, &seq, start)) {
+            for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end.cursor, tape.cursor) > 0; candidate = In_MatchBasic(tape, &seq, start)) {
                 match = candidate;
-                at = match.end;
+                tape = match.end;
             }
         }
         seq++;
@@ -159,7 +147,7 @@ static Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, con
     case '?':
         if (!match.success) {
             match.success = true;
-            match.end = at;
+            match.end = tape;
         }
         seq++;
         break;
@@ -171,20 +159,20 @@ static Redex_Match In_MatchMany(Buffer *buf, Cursor at, const char **endseq, con
     return match;
 }
 
-static Redex_Match In_MatchGroup(Buffer *buf, Cursor at, const char **endseq, const char *seq)
+static Redex_Match In_MatchGroup(BufferTape tape, const char **endseq, const char *seq)
 {
     seq++;
     bool success = true;
 
     while (*seq && *seq != ')') {
-        Redex_Match match = In_MatchMany(buf, at, &seq, seq);
+        Redex_Match match = In_MatchMany(tape, &seq, seq);
 
         if (!match.success) {
             success = false;
             break;
         }
 
-        at = match.end;
+        tape = match.end;
     }
 
     // Skip remaining regex syntax...
@@ -199,7 +187,7 @@ static Redex_Match In_MatchGroup(Buffer *buf, Cursor at, const char **endseq, co
     //
     // We can't just skip characters until ')', because it will mess up nesting and escaping.
     while (*seq && *seq != ')') {
-        In_MatchMany(buf, at, &seq, seq);
+        In_MatchMany(tape, &seq, seq);
     }
 
     // Skip ')'
@@ -208,23 +196,23 @@ static Redex_Match In_MatchGroup(Buffer *buf, Cursor at, const char **endseq, co
     }
 
     *endseq = seq;
-    return (Redex_Match){.success = success, .end = at};
+    return (Redex_Match){.success = success, .end = tape};
 }
 
 // TODO: This is almost an identical copy of In_MatchGroup,
 //       the only difference is that In_MatchGroup handles parentheses.
 //       There could be way to avoid duplication here.
-Redex_Match Redex_GetMatch(Buffer *buf, Cursor at, const char *seq)
+Redex_Match Redex_GetMatch(BufferTape tape, const char *seq)
 {
     while (*seq) {
-        Redex_Match match = In_MatchMany(buf, at, &seq, seq);
+        Redex_Match match = In_MatchMany(tape, &seq, seq);
 
         if (!match.success) {
-            return (Redex_Match){.success = false, .end = at};
+            return (Redex_Match){.success = false, .end = tape};
         }
 
-        at = match.end;
+        tape = match.end;
     }
 
-    return (Redex_Match){.success = true, .end = at};
+    return (Redex_Match){.success = true, .end = tape};
 }

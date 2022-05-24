@@ -139,10 +139,12 @@ Cursor In_LocateCursor(Buffer *buf, Line line, int lineNo)
 
 bool In_ProcessRedex(Redactor *rs, const char *redex, int *lineNo, Line *line) 
 {
-    Redex_Match match = Redex_GetMatch(&rs->file_buffer, In_LocateCursor(&rs->file_buffer, *line, *lineNo), redex);
+	BufferTape tape = BufferTape_InitAt(&rs->file_buffer, In_LocateCursor(&rs->file_buffer, *line, *lineNo));
+    Redex_Match match = Redex_GetMatch(tape, redex);
 
     if (match.success) {
-        In_TranslateCursor(&rs->file_buffer, match.end, line, lineNo);
+		*lineNo = match.end.cursor.line;
+		*line = match.end.line;
         return true;
     } else {
         return false;
@@ -156,6 +158,7 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
 
     Highlight_Rule rules[32];
     int rule_count = 0;
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Green, {.rule_anykw = keytab}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_White, {.rule_redex= "[a-zA-Z_]+[a-zA-Z_0-9]*"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Yellow, {.rule_redex= "[0-9]+"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Pinkish, {.rule_redex = "\"[^\"]*\"?"}};
@@ -163,7 +166,6 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"/*", "*/", ""}}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Gray, {.rule_redex = "//[^\\n]*"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"#", "\n", ""}}};
-    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Green, {.rule_anykw = keytab}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Pinkish, {.rule_anykw = symtab}};
     
 

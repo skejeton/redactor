@@ -68,6 +68,10 @@ static const RedexTest redexTests[] = {
         {{"_", NULL}, {"e", NULL}, {"1", "1"}}
     },  
     {
+        "[0-9]+",
+        {{"1t", "1"}}
+    },  
+    {
         "[a-z]+",
         {{"anyword", "anyword"}, {"love you", "love"}, {" ", NULL}}
     },  
@@ -111,18 +115,21 @@ void Test_Redex_Main()
     for (int i = 0; i < sizeof(redexTests) / sizeof(redexTests[0]); ++i) {
         const RedexTest *test = &redexTests[i];
         for (int j = 0; test->sequence[j].text; ++j) {
-            printf("------ %s against %s\n", test->redex, test->sequence[j].text);
+            printf("------ '%s' against '%s'\n", test->redex, test->sequence[j].text);
             Buffer buf = Buffer_InitFromString(test->sequence[j].text);
-            Redex_Match match = Redex_GetMatch(&buf, (Cursor){0, 0}, test->redex);
+            Redex_Match match = Redex_GetMatch(BufferTape_Init(&buf), test->redex);
 
             if (test->sequence[j].match) {
                 Expect(match.success);
-                char *r = Buffer_GetStringRange(&buf, (Range){{0, 0}, match.end});
+                char *r = Buffer_GetStringRange(&buf, (Range){{0, 0}, match.end.cursor});
                 Expect(strcmp(r, test->sequence[j].match) == 0);
                 Info("Match :: '%s'", r);
                 free(r);
             } else {
                 Expect(!match.success);
+				if (match.success) {
+					Info("Match :: %d, %d", match.end.cursor.line, match.end.cursor.column);
+				}	
             }
             Buffer_Deinit(&buf);
         }
