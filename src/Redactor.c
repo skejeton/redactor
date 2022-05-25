@@ -200,10 +200,9 @@ void Redactor_End(Redactor *rs)
 
 // -- draw
 
-SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int x, int y, int col)
+SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int initx, int x, int y, int col)
 {
     int c;
-    int initx = x;
     
     while ((c = Utf8_NextVeryBad(&text))) {
         // NOTE: Prevent out of bounds
@@ -211,7 +210,11 @@ SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int
             continue;
         }
 
-        if (c == '\t') {
+        if (c == '\n') {
+            y += rs->render_font_chunks[0]->glyphs[' '].h;
+            x = initx;
+            continue;
+        } else if (c == '\t') {
             x += rs->render_font_chunks[0]->glyphs[' '].w * (8 - (col % 8));
             col += (8 - (col % 8));
             continue;
@@ -230,7 +233,7 @@ SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int
         col++;
     }
 
-    return (SDL_Point){x-initx, rs->render_font_height};
+    return (SDL_Point){x, y};
 }
 
 SDL_Rect Redactor_GetCursorRect(Redactor *rs)
@@ -306,7 +309,7 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
     char title[1024];
     snprintf(title, 1024, "Texture viewer | w %d | h %d | s %g", texture_w, texture_h, scale);
 
-    Redactor_DrawText(rs, Redactor_Color_White, title, tex_pos_x, tex_pos_y-20, 0);
+    Redactor_DrawText(rs, Redactor_Color_White, title, tex_pos_x, tex_pos_x, tex_pos_y-20, 0);
     SDL_SetRenderDrawColor(rs->render_sdl_renderer, 70, 50, 128, 128);
     SDL_RenderDrawRect(rs->render_sdl_renderer, &(SDL_Rect){tex_pos_x-2, tex_pos_y-2, texture_w+4, texture_h+4});
 }
@@ -367,6 +370,15 @@ void Redactor_ScrollScreen(Redactor *rs, int byX, int byY)
 
     if (rs->render_scroll.y > 0)
         rs->render_scroll.y = 0;
+}
+
+void Redactor_Draw(Redactor *rs)
+{
+    SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
+    SDL_RenderClear(rs->render_sdl_renderer);
+    Highlight_DrawHighlightedBuffer(rs);
+    Redactor_DrawCursor(rs);
+    SDL_RenderPresent(rs->render_sdl_renderer);
 }
 
 void Redactor_HandleEvents(Redactor *rs)
@@ -458,11 +470,7 @@ void Redactor_Cycle(Redactor *rs)
     Redactor_HandleEvents(rs);
     
     SDL_GetWindowSize(rs->render_sdl_window, &rs->render_window_size.x, &rs->render_window_size.y);
-    SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
-    SDL_RenderClear(rs->render_sdl_renderer);
-    Highlight_DrawHighlightedBuffer(rs);
-    Redactor_DrawCursor(rs);
-    SDL_RenderPresent(rs->render_sdl_renderer);
+    Redactor_Draw(rs);
 }
 
 int Redactor_Main(int argc, char *argv[])

@@ -28,10 +28,6 @@ struct {
     int rule_type;
     SDL_Color color;
     union {
-        struct {
-            const char *charset;
-            bool bounded; // Will invalidate if sees alphanumeric characters around
-        } rule_anychar;
         const char **rule_anykw;
         struct { 
             const char *begin, *end, *slash;
@@ -41,114 +37,37 @@ struct {
 }
 typedef Highlight_Rule;
 
-
-
-char In_LineGetRelByte(Redactor *rs, Line rel, int line_no, int byteid)
-{ 
-    Line abs = rs->file_buffer.lines[line_no];
-    byteid += rel.text - abs.text;
-    return byteid < 0 || byteid >= abs.text_size ? 0 : abs.text[byteid];
-}
-
-bool In_ProcessAnyKw(Redactor *rs, const char *keytab[], int *line_no, Line *line)
+static bool In_ProcessRedex(Redactor *rs, const char *redex, BufferTape *tape)
 {
-    // boundary check
-    if (isalnum(In_LineGetRelByte(rs, *line, *line_no, -1)))
-        return false;
-
-    for (int i = 0; keytab[i]; ++i) {
-        int kl = strlen(keytab[i]);
-        if (strncmp(keytab[i], line->text, kl) == 0) {
-            // boundary check
-            if (isalnum(In_LineGetRelByte(rs, *line, *line_no, kl))) {
-                return false;
-            }
-            line->text += kl;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-bool In_ProcessAnyChar(Redactor *rs, bool bounded, const char *charset, int *line_no, Line *line)
-{
-    int n = 0, c;
-    char *prev = line->text;
-    if (bounded && isalnum(In_LineGetRelByte(rs, *line, *line_no, -1))) {
-        return false;
-    }
-    while ((c = Utf8_NextVeryBad((const char **)&line->text)) && Utf8_Strchr(charset, c)) {
-        prev = line->text;
-        n++;
-    }
-    line->text = prev;
-
-    return n > 0;
-}
-
-bool In_ProcessWrapped(Redactor *rs, const char *begin, const char *end, const char *slash, int *line_no, Line *line)
-{
-    int sb = strlen(begin), se = strlen(end), ss = strlen(slash);
-
-    if (strncmp(line->text, begin, sb) == 0) {
-        line->text += sb;
-        again:
-        while (*line->text && strncmp(line->text, end, se) != 0) {
-            if (strncmp(line->text, slash, ss) == 0) {
-                line->text += ss;
-            }
-            if (*line->text) {
-                line->text++;
-            }
-        }
-        if (*line->text) {
-            line->text += se;
-        } else if (*line_no < rs->file_buffer.lines_len-1 && *end != '\n') {
-            *line = rs->file_buffer.lines[++(*line_no)];
-            goto again;
-        }
-        return true;
-    } else {
-        return false;
-    }
-}
-
-void In_TranslateCursor(Buffer *buf, Cursor cursor, Line *out_line, int *out_lineNo)
-{
-    *out_lineNo = cursor.line;
-    *out_line = buf->lines[cursor.line];
-
-    for (int i = 0; i < cursor.column && Utf8_NextVeryBad((const char **)&out_line->text); ++i)
-        ;
-}
-
-Cursor In_LocateCursor(Buffer *buf, Line line, int lineNo) 
-{
-    Cursor out_cursor = { lineNo, 0 };
-    Line iterLine = buf->lines[lineNo];
-
-    while (iterLine.text != line.text) {
-        Utf8_NextVeryBad((const char **)&iterLine.text);
-        out_cursor.column += 1;
-    }
-
-    return out_cursor;
-}
-
-bool In_ProcessRedex(Redactor *rs, const char *redex, int *lineNo, Line *line) 
-{
-    BufferTape tape = BufferTape_InitAt(&rs->file_buffer, In_LocateCursor(&rs->file_buffer, *line, *lineNo));
-    Redex_Match match = Redex_GetMatch(tape, redex);
+    Redex_Match match = Redex_GetMatch(*tape, redex);
 
     if (match.success) {
-        *lineNo = match.end.cursor.line;
-        *line = match.end.line;
+        *tape = match.end;
         return true;
     } else {
         return false;
     }
+}
+
+static SDL_Point In_DrawTapeDifference(Redactor *rs, SDL_Point at, BufferTape start, BufferTape end, SDL_Color color) 
+{
+    int tmp = *end.line.text;
+    SDL_Point newPos;
+    *end.line.text = 0;
+    while (start.cursor.line <= end.cursor.line) {
+        newPos = Redactor_DrawText(rs, color, start.line.text, 0, at.x, at.y, start.cursor.column);
+        if (start.cursor.line < end.cursor.line) {
+        at.x = 0;
+        at.y += rs->render_font_height;
+        }
+        start.cursor.column = 0;
+        start.cursor.line += 1;
+        start.line = start.buffer->lines[start.cursor.line];
+    }
+    at.x = newPos.x;
+    *end.line.text = tmp;
+
+    return at;
 }
 
 void Highlight_DrawHighlightedBuffer(Redactor *rs)
@@ -168,81 +87,41 @@ void Highlight_DrawHighlightedBuffer(Redactor *rs)
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Gray, {.rule_wrapped = {"#", "\n", ""}}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Pinkish, {.rule_anykw = symtab}};
     
+    BufferTape tape = BufferTape_Init(&rs->file_buffer);
+    BufferTape newTape;
+    BufferTape tapeStart = tape;
 
-    int line_no = 0;
+    while (BufferTape_Get(&tape)) {
+        newTape = tape;
+        SDL_Color color = Redactor_Color_White;
 
-    while (line_no < rs->file_buffer.lines_len) {
-        int col = 0;
-        Line line = rs->file_buffer.lines[line_no];
-        while (*line.text) {
-            int start_line_no = line_no;
-            char *start = line.text;
-            bool match = false;
-            SDL_Color color = Redactor_Color_White;
-
-            for (int i = 0; i < rule_count; ++i)  {
-                Highlight_Rule *rule = &rules[i];
-                switch (rule->rule_type) {
-                case Highlight_Rule_AnyChar:
-                    match = In_ProcessAnyChar(rs, rule->rule_anychar.bounded, rule->rule_anychar.charset, &line_no, &line);
-                    break;
-                case Highlight_Rule_AnyKw:
-                    match = In_ProcessAnyKw(rs, rule->rule_anykw, &line_no, &line);
-                    break;
-                case Highlight_Rule_Wrapped:
-                    match = In_ProcessWrapped(rs, rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &line_no, &line);
-                    break;
-                case Highlight_Rule_Redex:
-                    match = In_ProcessRedex(rs, rule->rule_redex, &line_no, &line);
-                    break;
-                }
-
-                if (match) {
-                    color = rule->color;
-                    break;
-                }
+        bool match = false;
+        for (int i = 0; i < rule_count; ++i)  {
+            Highlight_Rule *rule = &rules[i];
+            switch (rule->rule_type) {
+            case Highlight_Rule_Redex:
+                match = In_ProcessRedex(rs, rule->rule_redex, &newTape);
+                break;
+            default: 
+                break;
             }
 
-            if (!match) {
-                line.text = start;
-                Utf8_NextVeryBad((const char **)&line.text);
-            }
-
-
-            if (start_line_no < line_no) {
-                position.y += Redactor_DrawText(rs, color, start, position.x, position.y, col).y;
-                position.x = rs->render_scroll.x;
-                start_line_no++;
-                col = 0;
-                start = rs->file_buffer.lines[line_no].text;
+            if (match) {
+                color = rule->color;
+                break;
             } 
-
-            while (start_line_no < line_no) {
-                Line cline = rs->file_buffer.lines[start_line_no];
-                position.y += Redactor_DrawText(rs, color, cline.text, position.x, position.y, col).y;
-                start_line_no++;
-            }
-
-            int tc = *line.text;
-            *line.text = 0;
-            SDL_Point delta = Redactor_DrawText(rs, color, start, position.x, position.y, col);
-            // FIXME: Slow, and pretty much a hack anyway
-            int c;
-            while ((c = Utf8_NextVeryBad((const char **)&start))) {
-                if (c == '\t') {
-                    col += (8 - (col % 8));
-                } else {
-                    col += 1;
-                }
-            }
-            height = delta.y;
-            position.x += delta.x;
-            *line.text = tc;
         }
 
-        position.y += height;
-        position.x = rs->render_scroll.x;
-        line_no++;
+        if (match) {
+            position = In_DrawTapeDifference(rs, position, tapeStart, tape, Redactor_Color_White);
+            tapeStart = tape;
+            tape = newTape;
+            position = In_DrawTapeDifference(rs, position, tapeStart, tape, color);
+            tapeStart = newTape;
+        } else {
+            BufferTape_Next(&tape);
+        }
     }
+    position = In_DrawTapeDifference(rs, position, tapeStart, tape, Redactor_Color_White);
 }
 
