@@ -387,80 +387,82 @@ void Redactor_HandleEvents(Redactor *rs)
 
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
-            case SDL_QUIT:
-                rs->program_running = false;
+        case SDL_QUIT:
+            rs->program_running = false;
             break;
-            case SDL_MOUSEWHEEL:
-                rs->toy_textureViewer_scale += event.wheel.y/10.0;
-                Redactor_ScrollScreen(rs, 0, event.wheel.y * rs->render_font_height);
+        case SDL_MOUSEWHEEL:
+            rs->toy_textureViewer_scale += event.wheel.y/10.0;
+            Redactor_ScrollScreen(rs, 0, event.wheel.y * rs->render_font_height);
             break;
-            case SDL_TEXTINPUT:
-                rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, event.text.text);
+        case SDL_TEXTINPUT:
+            rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, event.text.text);
             break;
-            case SDL_MOUSEBUTTONDOWN:
-                if (event.button.button == SDL_BUTTON_LEFT) {
-                    Redactor_SetCursorAtScreenPos(rs, event.button.x, event.button.y);
-                    Redactor_MoveCursorToVisibleArea(rs);
-                } 
+        case SDL_MOUSEBUTTONDOWN:
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                Redactor_SetCursorAtScreenPos(rs, event.button.x, event.button.y);
+                Redactor_MoveCursorToVisibleArea(rs);
+            } 
             break;
-            case SDL_KEYUP: {
-                switch (event.key.keysym.scancode) {
-                    // -- control keys
-                    case SDL_SCANCODE_LCTRL:
-                    case SDL_SCANCODE_RCTRL:
-                    rs->input.ks_ctrl = false;
-                    break;
-                    default:;
-                }
-            } break;
-            case SDL_KEYDOWN:
+        case SDL_KEYUP: {
             switch (event.key.keysym.scancode) {
-                // -.- control keys
+                // -- control keys
                 case SDL_SCANCODE_LCTRL:
                 case SDL_SCANCODE_RCTRL:
+                    rs->input.ks_ctrl = false;
+                    break;
+                default:;
+            }
+        } break;
+        case SDL_KEYDOWN:
+            switch (event.key.keysym.scancode) {
+            // -.- control keys
+            case SDL_SCANCODE_LCTRL:
+            case SDL_SCANCODE_RCTRL:
                 rs->input.ks_ctrl = true;
                 break;
-                // -- control keystrokes
-                case SDL_SCANCODE_V: {
+            // -- control keystrokes
+            case SDL_SCANCODE_V: 
+                {
                     if (rs->input.ks_ctrl) {
                         char *clipboardText = SDL_GetClipboardText();
                         rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, clipboardText);
                         free(clipboardText);
                     }
-                } break;
-                // -- miscel
-                case SDL_SCANCODE_TAB:
-                    rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\t");
-                    Redactor_MoveCursorToVisibleArea(rs);
+                }
                 break;
-                case SDL_SCANCODE_RETURN:
-                    rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\n");
-                    Redactor_MoveCursorToVisibleArea(rs);
+            // -- miscel
+            case SDL_SCANCODE_TAB:
+                rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\t");
+                Redactor_MoveCursorToVisibleArea(rs);
                 break;
-                case SDL_SCANCODE_BACKSPACE:
-                    rs->file_cursor = Buffer_RemoveCharacterUnder(&rs->file_buffer, rs->file_cursor);
-                    Redactor_MoveCursorToVisibleArea(rs);
+            case SDL_SCANCODE_RETURN:
+                rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\n");
+                Redactor_MoveCursorToVisibleArea(rs);
                 break;
-                case SDL_SCANCODE_UP:
-                    rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, -1, 0);
-                    Redactor_MoveCursorToVisibleArea(rs);
+            case SDL_SCANCODE_BACKSPACE:
+                rs->file_cursor = Buffer_RemoveCharacterUnder(&rs->file_buffer, rs->file_cursor);
+                Redactor_MoveCursorToVisibleArea(rs);
                 break;
-                case SDL_SCANCODE_DOWN:
-                    rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 1, 0);
-                    Redactor_MoveCursorToVisibleArea(rs);
+            case SDL_SCANCODE_UP:
+                rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, -1, 0);
+                Redactor_MoveCursorToVisibleArea(rs);
                 break;
-                case SDL_SCANCODE_LEFT:
-                    rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 0, -1);
-                    Redactor_MoveCursorToVisibleArea(rs);
+            case SDL_SCANCODE_DOWN:
+                rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 1, 0);
+                Redactor_MoveCursorToVisibleArea(rs);
                 break;
-                case SDL_SCANCODE_RIGHT:
-                    rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 0, 1);
-                    Redactor_MoveCursorToVisibleArea(rs);
+            case SDL_SCANCODE_LEFT:
+                rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 0, -1);
+                Redactor_MoveCursorToVisibleArea(rs);
                 break;
-                default:;
+            case SDL_SCANCODE_RIGHT:
+                rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 0, 1);
+                Redactor_MoveCursorToVisibleArea(rs);
+                break;
+            default:;
             }
             break;
-            default:;
+        default:;
         }
     }
 }
