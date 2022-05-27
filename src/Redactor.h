@@ -1,3 +1,5 @@
+#ifndef R_REDACTOR_H
+#define R_REDACTOR_H
 
 // Setup platform macros
 #if defined(__linux__)
@@ -18,6 +20,7 @@
 #include "Buffer.h"
 #include "Redex.h"
 #include "Util.h"
+#include "BufferDraw.h"
 
 #define Redactor_GlyphmapChunkMax 1024
 #define Redactor_GlyphmapGlyphMax (Redactor_GlyphmapChunkMax * 256)
@@ -59,7 +62,7 @@ struct {
 typedef Input;
 
 
-struct {
+struct Redactor {
     Background    toy_textureViewer_bg;
     float         toy_textureViewer_scale;
 
@@ -80,6 +83,7 @@ struct {
     SDL_Renderer *render_sdl_renderer;
     TTF_Font     *render_sdl_font_handle;
     int           render_font_height;
+    BufferDrawSegments render_drawSegments;
 
     bool          file_is_new;
     const char   *file_name;
@@ -99,5 +103,6 @@ SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int
 int Redactor_Main(int argc, char *argv[]);
 
 // -- Highlight
-void Highlight_DrawHighlightedBuffer(Redactor *rs);
+void Highlight_HighlightBuffer(Redactor *rs, BufferDrawSegments *out_segments);
 
+#endif

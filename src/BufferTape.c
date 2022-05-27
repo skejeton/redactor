@@ -62,4 +62,3 @@ int BufferTape_Get(BufferTape *tape)
 {
     return tape->ch;
 }
-
