@@ -28,6 +28,10 @@ static const RedexTest redexTests[] = {
         {{"something", ""}}
     },
     {
+        "/*",
+        {{"something", ""}}
+    },
+    {
         ",?",
         {{",", ","}, {"", ""}, {".", ""}}
     },
@@ -102,6 +106,10 @@ static const RedexTest redexTests[] = {
     {
         "\\.",
         {{".", "."}, {"blah", NULL}}
+    },
+    {
+        ".",
+        {{"x", "x"}, {"こ", "こ"}, {"", NULL}}
     },
     {
         "[H][e][l][lこx][o]",

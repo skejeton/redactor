@@ -1,8 +1,8 @@
 #ifndef R_BUFFERDRAW_H
 #define R_BUFFERDRAW_H
-
 #include <SDL2/SDL.h>
 #include "Buffer.h"
+
 struct Redactor;
 
 struct {

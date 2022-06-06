@@ -315,7 +315,7 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
     char title[1024];
     snprintf(title, 1024, "Texture viewer | w %d | h %d | s %g", texture_w, texture_h, scale);
 
-    Redactor_DrawText(rs, Redactor_Color_White, title, tex_pos_x, tex_pos_x, tex_pos_y-20, 0);
+    Redactor_DrawText(rs, Redactor_Color_Fore, title, tex_pos_x, tex_pos_x, tex_pos_y-20, 0);
     SDL_SetRenderDrawColor(rs->render_sdl_renderer, 70, 50, 128, 128);
     SDL_RenderDrawRect(rs->render_sdl_renderer, &(SDL_Rect){tex_pos_x-2, tex_pos_y-2, texture_w+4, texture_h+4});
 }
@@ -380,7 +380,7 @@ void Redactor_ScrollScreen(Redactor *rs, int byX, int byY)
 
 void Redactor_Draw(Redactor *rs)
 {
-    SDL_SetRenderDrawColor(rs->render_sdl_renderer, 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(rs->render_sdl_renderer, 17, 41, 31, 255);
     SDL_RenderClear(rs->render_sdl_renderer);
     BufferDraw_DrawBuffer(rs, &rs->file_buffer, &rs->render_drawSegments);
     Redactor_DrawCursor(rs);
@@ -422,7 +422,7 @@ void Redactor_HandleEvents(Redactor *rs)
         } break;
         case SDL_KEYDOWN:
             switch (event.key.keysym.scancode) {
-            // -.- control keys
+            // -- control keys
             case SDL_SCANCODE_LCTRL:
             case SDL_SCANCODE_RCTRL:
                 rs->input.ks_ctrl = true;
