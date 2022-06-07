@@ -132,11 +132,11 @@ void Highlight_HighlightBuffer(Redactor *rs, BufferDrawSegments *segments)
     BufferTape tape = BufferTape_Init(&rs->file_buffer);
     BufferTape newTape;
     while (BufferTape_Get(&tape)) {
-        newTape = tape;
         SDL_Color color = Redactor_Color_Fore;
 
         bool match = false;
         for (int i = 0; i < rule_count; ++i)  {
+            newTape = tape;
             Highlight_Rule *rule = &rules[i];
             switch (rule->rule_type) {
             case Highlight_Rule_Redex:

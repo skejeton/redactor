@@ -95,7 +95,7 @@ void Redactor_Init(Redactor *rs)
     // -- Init default cfg 
     rs->cfg_program_dataDir = "data";
     rs->cfg_font_respath = "monospace.ttf";
-    rs->cfg_font_size = 16;
+    rs->cfg_font_size = 14;
 
     // -- Init paths
     rs->program_location = Util_GetProgramPath();

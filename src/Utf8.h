@@ -1,3 +1,5 @@
+#ifndef R_UTF8_H
+#define R_UTF8_H
 #include <stdint.h>
 #include <stddef.h>
 
@@ -56,3 +58,4 @@ static inline int Utf8_Strlen(const char *s)
         ++i;
     return i;
 }
+#endif
