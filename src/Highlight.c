@@ -118,7 +118,8 @@ void Highlight_HighlightBuffer(Redactor *rs, BufferDrawSegments *segments)
 
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Keyword, {.rule_anykw = keytab}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_AnyKw, Redactor_Color_Literal, {.rule_anykw = symtab}};
-    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Lookahead, Redactor_Color_Call, {.rule_lookahead = {"[a-zA-Z_]+[a-zA-Z_0-9]*", "\\("}}};
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Lookahead, Redactor_Color_Call, {.rule_lookahead = {"[a-zA-Z_]+[a-zA-Z_0-9]*", "[ ]*\\("}}};
+    rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Lookahead, Redactor_Color_Keyword, {.rule_lookahead = {"[a-zA-Z_]+[a-zA-Z_0-9]*", "[*( ]*[a-zA-Z_]+[a-zA-Z_0-9]*"}}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Fore, {.rule_redex= "[a-zA-Z_]+[a-zA-Z_0-9]*"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Literal, {.rule_redex= "[0-9]+"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_String, {.rule_wrapped = {"\"", "\"", "\\\\."}}};
@@ -126,8 +127,6 @@ void Highlight_HighlightBuffer(Redactor *rs, BufferDrawSegments *segments)
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Faded, {.rule_wrapped = {"/\\*", "\\*/", ""}}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Redex, Redactor_Color_Faded, {.rule_redex = "//[^\\n]*"}};
     rules[rule_count++] = (Highlight_Rule){Highlight_Rule_Wrapped, Redactor_Color_Faded, {.rule_wrapped = {"#", "\n", ""}}};
-
-
 
     BufferTape tape = BufferTape_Init(&rs->file_buffer);
     BufferTape newTape;

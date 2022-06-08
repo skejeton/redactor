@@ -50,6 +50,8 @@ static inline const char *Utf8_Strchr(const char *s, int ch)
     return 0;
 }
 
+
+
 // NOTE: You probably don't want to use this
 static inline int Utf8_Strlen(const char *s)
 {
