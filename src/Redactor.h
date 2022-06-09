@@ -21,6 +21,7 @@
 #include "Redex.h"
 #include "Util.h"
 #include "BufferDraw.h"
+#include "Highlight.h"
 
 #define Redactor_GlyphmapChunkMax 1024
 #define Redactor_GlyphmapGlyphMax (Redactor_GlyphmapChunkMax * 256)
@@ -100,8 +101,5 @@ void Background_Draw(Redactor *rs, Background *bg);
 // -- Redactor
 SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int initx, int x, int y, int col);
 int Redactor_Main(int argc, char *argv[]);
-
-// -- Highlight
-void Highlight_HighlightBuffer(Redactor *rs, BufferDrawSegments *out_segments);
 
 #endif

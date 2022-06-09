@@ -11,6 +11,7 @@
 #include "Utf8.h"
 #include "Redactor.h"
 #include "BufferDraw.h"
+#include "HighlightSets.h"
 
 // -- util
 
@@ -387,6 +388,10 @@ void Redactor_Draw(Redactor *rs)
     SDL_RenderPresent(rs->render_sdl_renderer);
 }
 
+void In_InvalidateBuffer(Redactor *rs) {
+    Highlight_HighlightBuffer(rs, &HighlightSets_C, &rs->render_drawSegments);
+}
+
 void Redactor_HandleEvents(Redactor *rs)
 {
     SDL_Event event;
@@ -402,7 +407,7 @@ void Redactor_HandleEvents(Redactor *rs)
             break;
         case SDL_TEXTINPUT:
             rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, event.text.text);
-            Highlight_HighlightBuffer(rs, &rs->render_drawSegments);
+            In_InvalidateBuffer(rs);
             break;
         case SDL_MOUSEBUTTONDOWN:
             if (event.button.button == SDL_BUTTON_LEFT) {
@@ -434,7 +439,7 @@ void Redactor_HandleEvents(Redactor *rs)
                         char *clipboardText = SDL_GetClipboardText();
                         rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, clipboardText);
                         free(clipboardText);
-                        Highlight_HighlightBuffer(rs, &rs->render_drawSegments);
+                        In_InvalidateBuffer(rs);
                     }
                 }
                 break;
@@ -442,17 +447,17 @@ void Redactor_HandleEvents(Redactor *rs)
             case SDL_SCANCODE_TAB:
                 rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\t");
                 Redactor_MoveCursorToVisibleArea(rs);
-                Highlight_HighlightBuffer(rs, &rs->render_drawSegments);
+                In_InvalidateBuffer(rs);
                 break;
             case SDL_SCANCODE_RETURN:
                 rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\n");
                 Redactor_MoveCursorToVisibleArea(rs);
-                Highlight_HighlightBuffer(rs, &rs->render_drawSegments);
+                In_InvalidateBuffer(rs);
                 break;
             case SDL_SCANCODE_BACKSPACE:
                 rs->file_cursor = Buffer_RemoveCharacterUnder(&rs->file_buffer, rs->file_cursor);
                 Redactor_MoveCursorToVisibleArea(rs);
-                Highlight_HighlightBuffer(rs, &rs->render_drawSegments);
+                In_InvalidateBuffer(rs);
                 break;
             case SDL_SCANCODE_UP:
                 rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, -1, 0);
@@ -491,7 +496,7 @@ int Redactor_Main(int argc, char *argv[])
     Redactor rs = {0};
     Redactor_Init(&rs);
     Redactor_UseArgs(&rs, argc, argv);
-    Highlight_HighlightBuffer(&rs, &rs.render_drawSegments);
+    In_InvalidateBuffer(&rs);
 
     while (rs.program_running) {
         Redactor_Cycle(&rs);

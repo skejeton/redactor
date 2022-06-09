@@ -1,4 +1,4 @@
-FILES = $(shell echo src/*.c)
+FILES = $(shell echo src/*.c src/Redex/*.c)
 TEST_FILES = $(shell echo tests/*/Main.c) $(shell echo tests/*.c) $(filter-out src/Main.c, $(FILES))
 HEADERS = $(shell find -name "*.h")
 TEST_HEADERS = $(HEADERS)
