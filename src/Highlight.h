@@ -33,8 +33,6 @@ struct {
 }
 typedef Highlight_Set;
 
-struct Redactor;
-
-void Highlight_HighlightBuffer(struct Redactor *rs, const Highlight_Set *set, BufferDrawSegments *segments);
+void Highlight_HighlightBuffer(Buffer *buf, const Highlight_Set *set, BufferDrawSegments *out_segments);
 
 #endif

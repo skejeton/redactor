@@ -1,11 +1,10 @@
-#include "Redactor.h"
 #include "BufferDraw.h"
 #include "Utf8.h"
 #include "Redex.h"
 #include "Highlight.h"
+#include "Colors.h"
 
-
-static bool In_ProcessWrapped(Redactor *rs, const char *begin, const char *end, const char *escape, BufferTape *tape)
+static bool In_ProcessWrapped(const char *begin, const char *end, const char *escape, BufferTape *tape)
 {
     Redex_Match match = Redex_GetMatch(*tape, begin);
     
@@ -34,7 +33,7 @@ static bool In_ProcessWrapped(Redactor *rs, const char *begin, const char *end, 
     }
 }
 
-static bool In_ProcessLookahead(Redactor *rs, const char *data, const char *tail, BufferTape *tape)
+static bool In_ProcessLookahead(const char *data, const char *tail, BufferTape *tape)
 {
     Redex_Match match = Redex_GetMatch(*tape, data);
 
@@ -46,7 +45,7 @@ static bool In_ProcessLookahead(Redactor *rs, const char *data, const char *tail
     }
 }
 
-static bool In_ProcessRedex(Redactor *rs, const char *redex, BufferTape *tape)
+static bool In_ProcessRedex(const char *redex, BufferTape *tape)
 {
     Redex_Match match = Redex_GetMatch(*tape, redex);
 
@@ -58,14 +57,14 @@ static bool In_ProcessRedex(Redactor *rs, const char *redex, BufferTape *tape)
     }
 }
 
-static bool In_ProcessAnyKw(Redactor *rs, const char **table, BufferTape *tape)
+static bool In_ProcessAnyKw(const char **table, BufferTape *tape)
 {
     // TODO: Binary search
     for (int i = 0; table[i]; i++) {
         BufferTape copy = *tape;
 
         // NOTE: This is a quick hack, ideally when I have nested rules I can have keyword derive from identifier
-        if (In_ProcessRedex(rs, table[i], &copy) && !isalnum(BufferTape_Get(&copy)) && BufferTape_Get(&copy) != '_') {
+        if (In_ProcessRedex(table[i], &copy) && !isalnum(BufferTape_Get(&copy)) && BufferTape_Get(&copy) != '_') {
             *tape = copy;
             return true;
         }
@@ -73,10 +72,10 @@ static bool In_ProcessAnyKw(Redactor *rs, const char **table, BufferTape *tape)
     return false;
 }
 
-void Highlight_HighlightBuffer(Redactor *rs, const Highlight_Set *set, BufferDrawSegments *segments)
+void Highlight_HighlightBuffer(Buffer *buf, const Highlight_Set *set, BufferDrawSegments *out_segments)
 {
-    BufferDraw_InvalidateSegments(segments);
-    BufferTape tape = BufferTape_Init(&rs->file_buffer);
+    BufferDraw_InvalidateSegments(out_segments);
+    BufferTape tape = BufferTape_Init(buf);
     BufferTape newTape;
 
     while (BufferTape_Get(&tape)) {
@@ -88,16 +87,16 @@ void Highlight_HighlightBuffer(Redactor *rs, const Highlight_Set *set, BufferDra
             Highlight_Rule *rule = &set->rules[i];
             switch (rule->rule_type) {
             case Highlight_Rule_Redex:
-                match = In_ProcessRedex(rs, rule->rule_redex, &newTape);
+                match = In_ProcessRedex(rule->rule_redex, &newTape);
                 break;
             case Highlight_Rule_Lookahead:
-                match = In_ProcessLookahead(rs, rule->rule_lookahead.data, rule->rule_lookahead.tail, &newTape);
+                match = In_ProcessLookahead(rule->rule_lookahead.data, rule->rule_lookahead.tail, &newTape);
                 break;
             case Highlight_Rule_Wrapped:
-                match = In_ProcessWrapped(rs, rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &newTape);
+                match = In_ProcessWrapped(rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &newTape);
                 break;
             case Highlight_Rule_AnyKw:
-                match = In_ProcessAnyKw(rs, rule->rule_anykw, &newTape);
+                match = In_ProcessAnyKw(rule->rule_anykw, &newTape);
                 break;
             default: 
                 break;
@@ -110,13 +109,13 @@ void Highlight_HighlightBuffer(Redactor *rs, const Highlight_Set *set, BufferDra
         }
 
         if (match) {
-            BufferDraw_InsertSegment(segments, tape.cursor.line, tape.cursor.column, BufferTape_GetSubstringMemoryOffset(&tape), Redactor_Color_Fore);
-            BufferDraw_InsertSegment(segments, newTape.cursor.line, newTape.cursor.column, BufferTape_GetSubstringMemoryOffset(&newTape), color);
+            BufferDraw_InsertSegment(out_segments, tape.cursor.line, tape.cursor.column, BufferTape_GetSubstringMemoryOffset(&tape), Redactor_Color_Fore);
+            BufferDraw_InsertSegment(out_segments, newTape.cursor.line, newTape.cursor.column, BufferTape_GetSubstringMemoryOffset(&newTape), color);
             tape = newTape;
         } else {
             BufferTape_Next(&tape);
         }
     }
-    BufferDraw_InsertSegment(segments, tape.cursor.line, tape.cursor.column, BufferTape_GetSubstringMemoryOffset(&tape), Redactor_Color_Fore);
+    BufferDraw_InsertSegment(out_segments, tape.cursor.line, tape.cursor.column, BufferTape_GetSubstringMemoryOffset(&tape), Redactor_Color_Fore);
 }
 

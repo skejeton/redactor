@@ -1,7 +1,12 @@
 #include "HighlightSets.h"
-#include "Redactor.h"
+#include "Colors.h"
 
-#define Ruleset(x) x, sizeof(x)/sizeof(0[x])
+#define R(x) Highlight_Rule_##x
+#define C(x) Redactor_Color_##x
+#define AnyKw(x) {.rule_anykw = (x)}
+#define Lookahead(r, a) {.rule_lookahead = {(r), (a)}}
+#define Redex(r) {.rule_redex = (r)}
+#define Wrapped(sta, end, esc) {.rule_wrapped = {(sta), (end), (esc)}}
 
 static const char *C_keytab[] = {
     "auto", "bool", "break", "case", "char",
@@ -19,17 +24,17 @@ static const char *C_symtab[] = {
 };
 
 static Highlight_Rule C_rules[] = {
-    {Highlight_Rule_AnyKw, Redactor_Color_Keyword, {.rule_anykw = C_keytab}},
-    {Highlight_Rule_AnyKw, Redactor_Color_Literal, {.rule_anykw = C_symtab}},
-    {Highlight_Rule_Lookahead, Redactor_Color_Call, {.rule_lookahead = {"[a-zA-Z_]+[a-zA-Z_0-9]*", "[ ]*\\("}}},
-    {Highlight_Rule_Lookahead, Redactor_Color_Keyword, {.rule_lookahead = {"[a-zA-Z_]+[a-zA-Z_0-9]*", "[*( ]*[a-zA-Z_]+[a-zA-Z_0-9]*"}}},
-    {Highlight_Rule_Redex, Redactor_Color_Fore, {.rule_redex= "[a-zA-Z_]+[a-zA-Z_0-9]*"}},
-    {Highlight_Rule_Redex, Redactor_Color_Literal, {.rule_redex= "[0-9]+"}},
-    {Highlight_Rule_Wrapped, Redactor_Color_String, {.rule_wrapped = {"\"", "\"", "\\\\."}}},
-    {Highlight_Rule_Wrapped, Redactor_Color_String, {.rule_wrapped = {"\'", "\'", "\\\\."}}},
-    {Highlight_Rule_Wrapped, Redactor_Color_Faded, {.rule_wrapped = {"/\\*", "\\*/", ""}}},
-    {Highlight_Rule_Redex, Redactor_Color_Faded, {.rule_redex = "//[^\\n]*"}},
-    {Highlight_Rule_Wrapped, Redactor_Color_Faded, {.rule_wrapped = {"#", "\n", ""}}}
+    {R(AnyKw),      C(Keyword), AnyKw(C_keytab)},
+    {R(AnyKw),      C(Literal), AnyKw(C_symtab)},
+    {R(Lookahead),  C(Call),    Lookahead("[a-zA-Z_]+[a-zA-Z_0-9]*", "[ ]*\\(")},
+    {R(Lookahead),  C(Keyword), Lookahead("[a-zA-Z_]+[a-zA-Z_0-9]*", "[*( ]*[a-zA-Z_]+[a-zA-Z_0-9]*")},
+    {R(Redex),      C(Fore),    Redex("[a-zA-Z_]+[a-zA-Z_0-9]*")},
+    {R(Redex),      C(Literal), Redex("[0-9]+")},
+    {R(Wrapped),    C(String),  Wrapped("\"", "\"", "\\\\.")},
+    {R(Wrapped),    C(String),  Wrapped("\'", "\'", "\\\\.")},
+    {R(Wrapped),    C(Faded),   Wrapped("/\\*", "\\*/", "")},
+    {R(Redex),      C(Faded),   Redex("//[^\\n]*")},
+    {R(Wrapped),    C(Faded),   Wrapped("#", "\n", "")}
 };
 
 const Highlight_Set HighlightSets_C = {C_rules, sizeof C_rules / sizeof 0[C_rules]};

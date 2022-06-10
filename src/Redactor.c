@@ -389,7 +389,7 @@ void Redactor_Draw(Redactor *rs)
 }
 
 void In_InvalidateBuffer(Redactor *rs) {
-    Highlight_HighlightBuffer(rs, &HighlightSets_C, &rs->render_drawSegments);
+    Highlight_HighlightBuffer(&rs->file_buffer, &HighlightSets_C, &rs->render_drawSegments);
 }
 
 void Redactor_HandleEvents(Redactor *rs)
