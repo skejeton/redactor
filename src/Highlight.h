@@ -29,7 +29,7 @@ typedef Highlight_Rule;
 
 struct {
     Highlight_Rule *rules;
-    int rules_count;
+    int rules_len;
 }
 typedef Highlight_Set;
 

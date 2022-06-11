@@ -12,6 +12,7 @@
 #include "Redactor.h"
 #include "BufferDraw.h"
 #include "HighlightSets.h"
+#include "Colors.h"
 
 // -- util
 

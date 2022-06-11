@@ -82,7 +82,7 @@ void Highlight_HighlightBuffer(Buffer *buf, const Highlight_Set *set, BufferDraw
         SDL_Color color = Redactor_Color_Fore;
 
         bool match = false;
-        for (int i = 0; i < set->rules_count; ++i)  {
+        for (int i = 0; i < set->rules_len; ++i)  {
             newTape = tape;
             Highlight_Rule *rule = &set->rules[i];
             switch (rule->rule_type) {

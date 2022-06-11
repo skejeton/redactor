@@ -29,6 +29,7 @@ struct {
     Cursor from, to;
 }
 typedef Range;
+
 Cursor Buffer_InsertUTF8(Buffer *buf, Cursor cursor, const char *text);
 Cursor Buffer_RemoveCharacterUnder(Buffer *buf, Cursor under);
 Cursor Buffer_MoveCursor(Buffer *buf, Cursor cursor, int lines, int cols);
