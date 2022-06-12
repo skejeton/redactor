@@ -10,6 +10,27 @@ typedef struct {
     const char *source;
 } In_Compiler;
 
+static int32_t In_Fetch(In_Compiler *co)
+{
+    uint32_t new_char = 0;
+    co->source += Utf8_Fetch(&new_char, co->source);
+
+    if (new_char == '\\') {
+        co->source += Utf8_Fetch(&new_char, co->source);
+
+        switch (new_char) {
+            case 't':
+                return '\t';
+            case 's':
+                return ' ';
+            case 'n':
+                return '\n';
+        }
+    }
+
+    return new_char;
+}
+
 static void In_AddSubgroup(Redex_Group *group, Redex_SubGroup subgroup)
 {
     if (group->subgroups_len % REALLOC_PERIOD == 0) {
@@ -17,6 +38,15 @@ static void In_AddSubgroup(Redex_Group *group, Redex_SubGroup subgroup)
     }
 
     group->subgroups[group->subgroups_len++] = subgroup;
+}
+
+static void In_AddRange(Redex_Charset *set, Redex_CharacterRange range)
+{
+    if (set->ranges_len % REALLOC_PERIOD == 0) {
+        set->ranges = realloc(set->ranges, sizeof(*set->ranges) * (set->ranges_len+512));
+    }
+
+    set->ranges[set->ranges_len++] = range;
 }
 
 static bool In_IsCompiling(In_Compiler *co)
@@ -45,17 +75,35 @@ static Redex_SubGroup In_CompileGroup(In_Compiler *co)
 // NOTE(skejeton): This uses `]` as a sentinel.
 static Redex_SubGroup In_CompileCharset(In_Compiler *co)
 {
-    Redex_Group out = {0};
-    while (In_IsCompiling(co) && *co->source != ')') {
-        In_AddSubgroup(&out, In_CompileBasic(co));
+    Redex_Charset out = {0};
+
+    if (*co->source == '^') {
+        out.inverted = true;
+        co->source++;
+    }
+
+    while (In_IsCompiling(co) && *co->source != ']') {
+        Redex_CharacterRange range;
+        range.from = In_Fetch(co);
+        range.to = range.from;
+        if (*co->source == '-') {
+            co->source += 1;
+            range.to = In_Fetch(co);
+        }
+
+        if (range.to < range.from) {
+            continue;
+        }
+
+        In_AddRange(&out, range);
     }
     
-    // NOTE(skejeton): Skip `)` sentinel
+    // NOTE(skejeton): Skip `]` sentinel
     if (In_IsCompiling(co)) {
         co->source++;
     }   
 
-    return (Redex_SubGroup){0, Redex_SubGroup_Group, {.group = out}};
+    return (Redex_SubGroup){0, Redex_SubGroup_Charset, {.charset = out}};
 }
 
 static Redex_SubGroup In_CompileBasic(In_Compiler *co)
@@ -72,7 +120,7 @@ static Redex_SubGroup In_CompileBasic(In_Compiler *co)
         out = In_CompileCharset(co);
         break;
     default:
-        out = (Redex_SubGroup){0, Redex_SubGroup_Char, {.ch = Utf8_NextVeryBad(&co->source)}};
+        out = (Redex_SubGroup){0, Redex_SubGroup_Char, {.ch = In_Fetch(co)}};
         break;
     }
 

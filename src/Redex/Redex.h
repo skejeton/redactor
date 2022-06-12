@@ -3,11 +3,13 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "src/Utf8.h"
 
 enum {
     Redex_SubGroup_Char,
     Redex_SubGroup_Group,
+    Redex_SubGroup_Charset
 }
 typedef Redex_SubGroup_Type;
 
@@ -18,6 +20,20 @@ enum {
     Redex_Quantifier_Lazy      // ?
 }
 typedef Redex_Quantifier;
+
+// Character range (Inclusive)
+struct {
+    uint32_t from;
+    uint32_t to;
+}
+typedef Redex_CharacterRange;
+
+struct {
+    Redex_CharacterRange *ranges;
+    size_t ranges_len;
+    bool inverted;  // NOTE(skejeton): for checks if characters do not match
+}
+typedef Redex_Charset;
 
 struct Redex_Group {
     struct Redex_SubGroup *subgroups;
@@ -30,7 +46,8 @@ struct Redex_SubGroup {
     Redex_SubGroup_Type type;
     union {
         uint32_t ch;
-        struct Redex_Group group;
+        Redex_Group group;
+        Redex_Charset charset;
     };
 }
 typedef Redex_SubGroup;
