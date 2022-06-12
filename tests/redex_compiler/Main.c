@@ -4,10 +4,14 @@
 void In_CharsetSynopsis(Redex_Charset set) {
     printf("[");
     if (set.inverted) {
-        printf("^");
+        printf("not ");
     }
     for (int i = 0; i < set.ranges_len; ++i) {
         Redex_CharacterRange range = set.ranges[i];
+        if (i != 0) {
+            printf(" or ");
+        }
+
         if (range.from == range.to) {
             printf("%lc", range.from);
         } else {
@@ -45,6 +49,13 @@ void In_GroupSynopsis(Redex_Group group)
             case Redex_SubGroup_Charset: 
                 In_CharsetSynopsis(subgroup.charset);
                 break;
+            case Redex_SubGroup_CharacterClass:
+                switch(subgroup.character_class) {
+                    case Redex_CharacterClass_Any:
+                        printf("[ANY_CHAR]");
+                        break;
+                }
+                break; 
         }
         
         printf("%s", QNT_CHARS[subgroup.quantifier]);
@@ -53,6 +64,6 @@ void In_GroupSynopsis(Redex_Group group)
 
 void Test_Redex_Compiler_Main()
 {
-    In_GroupSynopsis(Redex_Compile("abcd[]e?(f12)*?3+"));
+    In_GroupSynopsis(Redex_Compile("ab\\.c.d[a-z0-9]e?(f12)*?3+"));
     printf("\n");
 }

@@ -9,7 +9,8 @@
 enum {
     Redex_SubGroup_Char,
     Redex_SubGroup_Group,
-    Redex_SubGroup_Charset
+    Redex_SubGroup_Charset,
+    Redex_SubGroup_CharacterClass,
 }
 typedef Redex_SubGroup_Type;
 
@@ -20,6 +21,11 @@ enum {
     Redex_Quantifier_Lazy      // ?
 }
 typedef Redex_Quantifier;
+
+enum {
+    Redex_CharacterClass_Any   // .
+}
+typedef Redex_CharacterClass;
 
 // Character range (Inclusive)
 struct {
@@ -48,6 +54,7 @@ struct Redex_SubGroup {
         uint32_t ch;
         Redex_Group group;
         Redex_Charset charset;
+        Redex_CharacterClass character_class;
     };
 }
 typedef Redex_SubGroup;

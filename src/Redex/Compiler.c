@@ -119,27 +119,31 @@ static Redex_SubGroup In_CompileBasic(In_Compiler *co)
         co->source++;
         out = In_CompileCharset(co);
         break;
+    case '.':
+        out = (Redex_SubGroup){0, Redex_SubGroup_CharacterClass, {.character_class = Redex_CharacterClass_Any}};
+        co->source++;
+        break;
     default:
         out = (Redex_SubGroup){0, Redex_SubGroup_Char, {.ch = In_Fetch(co)}};
         break;
     }
 
     switch (*co->source) {
-    case '*':
-        out.quantifier = Redex_Quantifier_All;
-        co->source += 1;
-        break;
-    case '+':
-        out.quantifier = Redex_Quantifier_Greedy;
-        co->source += 1;
-        break;
-    case '?':
-        out.quantifier = Redex_Quantifier_Lazy;
-        co->source += 1;
-        break;
-    default:
-        out.quantifier = Redex_Quantifier_None;
-        break;
+        case '*':
+            out.quantifier = Redex_Quantifier_All;
+            co->source += 1;
+            break;
+        case '+':
+            out.quantifier = Redex_Quantifier_Greedy;
+            co->source += 1;
+            break;
+        case '?':
+            out.quantifier = Redex_Quantifier_Lazy;
+            co->source += 1;
+            break;
+        default:
+            out.quantifier = Redex_Quantifier_None;
+            break;
     }
 
     return out;

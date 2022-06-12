@@ -100,18 +100,18 @@ static Redex_Match In_MatchBasic(BufferTape tape, const char **endseq, const cha
 {
     Redex_Match match;
     switch (*seq) {
-    case '[':
-        match = In_MatchCharGroup(tape, &seq, seq);
-        break;
-    case '(':
-        match = In_MatchGroup(tape, &seq, seq);
-        break;
-    case '.':
-        match = In_MatchAnyChar(tape, &seq, seq);
-        break;
-    default:
-        match = In_MatchOneChar(tape, &seq, seq);
-        break;
+        case '[':
+            match = In_MatchCharGroup(tape, &seq, seq);
+            break;
+        case '(':
+            match = In_MatchGroup(tape, &seq, seq);
+            break;
+        case '.':
+            match = In_MatchAnyChar(tape, &seq, seq);
+            break;
+        default:
+            match = In_MatchOneChar(tape, &seq, seq);
+            break;
     }
     *endseq = seq;
     return match;
@@ -123,36 +123,36 @@ static Redex_Match In_MatchMany(BufferTape tape, const char **endseq, const char
     Redex_Match match = In_MatchBasic(tape, &seq, start);
 
     switch (*seq) {
-    case '+':
-        for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end.cursor, tape.cursor) > 0; candidate = In_MatchBasic(tape, &seq, start)) {
-            match = candidate;
-            tape = match.end;
-        }
-        seq++;
-        break;
-    case '*':
-        // TODO: This check may be unnecessary if we returned back to the start on failed matches
-        if (!match.success) {
-            match.success = true;
-            match.end = tape;
-        }
-        else {
+        case '+':
             for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end.cursor, tape.cursor) > 0; candidate = In_MatchBasic(tape, &seq, start)) {
                 match = candidate;
                 tape = match.end;
             }
-        }
-        seq++;
-        break;
-    case '?':
-        if (!match.success) {
-            match.success = true;
-            match.end = tape;
-        }
-        seq++;
-        break;
-    default:
-        break;
+            seq++;
+            break;
+        case '*':
+            // TODO: This check may be unnecessary if we returned back to the start on failed matches
+            if (!match.success) {
+                match.success = true;
+                match.end = tape;
+            }
+            else {
+                for (Redex_Match candidate = match; candidate.success && Buffer_CompareCursor(candidate.end.cursor, tape.cursor) > 0; candidate = In_MatchBasic(tape, &seq, start)) {
+                    match = candidate;
+                    tape = match.end;
+                }
+            }
+            seq++;
+            break;
+        case '?':
+            if (!match.success) {
+                match.success = true;
+                match.end = tape;
+            }
+            seq++;
+            break;
+        default:
+            break;
     }
 
     *endseq = seq;
