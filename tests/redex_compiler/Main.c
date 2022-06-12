@@ -64,6 +64,9 @@ void In_GroupSynopsis(Redex_Group group)
 
 void Test_Redex_Compiler_Main()
 {
-    In_GroupSynopsis(Redex_Compile("ab\\.c.d[a-z0-9]e?(f12)*?3+"));
+    Redex_CompiledExpression expr = Redex_Compile("ab\\.c.d[a-z0-9]e?(f12)*?3+");
+    In_GroupSynopsis(expr);
+    Redex_CompiledExpressionDeinit(&expr);
+
     printf("\n");
 }

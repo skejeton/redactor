@@ -62,5 +62,6 @@ typedef Redex_SubGroup;
 typedef Redex_Group Redex_CompiledExpression;
 
 Redex_CompiledExpression Redex_Compile(const char *redex);
+void Redex_CompiledExpressionDeinit(Redex_CompiledExpression *expr);
 
 #endif
