@@ -7,12 +7,13 @@ TEST_OBJECTS = $(TEST_FILES:.c=.o)
 LDFLAGS = -lSDL2 -lSDL2_ttf -lm -lc
 ASANFLAGS ?= -fsanitize=address
 ASAN ?= -lasan 
-CCFLAGS = -I. -g -Wall $(ASANFLAGS)
+CCFLAGS = -I. -Isrc -g -Wall $(ASANFLAGS)
 #CCFLAGS = -O3 -g -flto
 EXECUTABLE = ./bin/redactor
 TEST_EXECUTABLE = ./bin/test
 
-all: $(FILES) $(EXECUTABLE) $(HEADERS) Makefile
+all: $(FILES) $(EXECUTABLE) $(HEADERS) Makefile 
+	./bin/redactor tests/TestInputUnicodeBasic.txt
 
 $(EXECUTABLE): $(OBJECTS) 
 	$(CC) $(ASAN) $(CCFLAGS) $(LDFLAGS) $(OBJECTS) -o $@ 
@@ -21,7 +22,9 @@ $(EXECUTABLE): $(OBJECTS)
 %.o: %.c
 	$(CC) $(CCFLAGS) -c $< -o $@
 
-test: $(TEST_SOURCES) $(TEST_EXECUTABLE) $(HEADERS) $(TEST_HEADERS) Makefile
+test_build: $(TEST_SOURCES) $(TEST_EXECUTABLE) $(HEADERS) $(TEST_HEADERS) Makefile
+
+test: test_build
 	./bin/test
 
 $(TEST_EXECUTABLE): $(TEST_OBJECTS)

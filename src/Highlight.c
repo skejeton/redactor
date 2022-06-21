@@ -1,10 +1,10 @@
 #include "BufferDraw.h"
 #include "Utf8.h"
-#include "Redex.h"
+#include "Redex/Redex.h"
 #include "Highlight.h"
 #include "Colors.h"
 
-static bool In_ProcessWrapped(const char *begin, const char *end, const char *escape, BufferTape *tape)
+static bool In_ProcessWrapped(Redex_CompiledExpression *begin, Redex_CompiledExpression *end, Redex_CompiledExpression *escape, BufferTape *tape)
 {
     Redex_Match match = Redex_GetMatch(*tape, begin);
     
@@ -28,12 +28,12 @@ static bool In_ProcessWrapped(const char *begin, const char *end, const char *es
             }
         }
         return true;
-    } else {
-        return false;
     }
+
+    return false;
 }
 
-static bool In_ProcessLookahead(const char *data, const char *tail, BufferTape *tape)
+static bool In_ProcessLookahead(Redex_CompiledExpression *data, Redex_CompiledExpression *tail, BufferTape *tape)
 {
     Redex_Match match = Redex_GetMatch(*tape, data);
 
@@ -45,9 +45,10 @@ static bool In_ProcessLookahead(const char *data, const char *tail, BufferTape *
     }
 }
 
-static bool In_ProcessRedex(const char *redex, BufferTape *tape)
+static bool In_ProcessRedex(Redex_CompiledExpression *expr, BufferTape *tape)
 {
-    Redex_Match match = Redex_GetMatch(*tape, redex);
+    // TODO(skejeton): Pre compile
+    Redex_Match match = Redex_GetMatch(*tape, expr);
 
     if (match.success) {
         *tape = match.end;
@@ -57,14 +58,14 @@ static bool In_ProcessRedex(const char *redex, BufferTape *tape)
     }
 }
 
-static bool In_ProcessAnyKw(const char **table, BufferTape *tape)
+static bool In_ProcessAnyKw(Redex_CompiledExpression *exprs, size_t exprs_len, BufferTape *tape)
 {
     // TODO: Binary search
-    for (int i = 0; table[i]; i++) {
+    for (int i = 0; i < exprs_len; i++) {
         BufferTape copy = *tape;
 
         // NOTE: This is a quick hack, ideally when I have nested rules I can have keyword derive from identifier
-        if (In_ProcessRedex(table[i], &copy) && !isalnum(BufferTape_Get(&copy)) && BufferTape_Get(&copy) != '_') {
+        if (In_ProcessRedex(&exprs[i], &copy) && !isalnum(BufferTape_Get(&copy)) && BufferTape_Get(&copy) != '_') {
             *tape = copy;
             return true;
         }
@@ -86,20 +87,20 @@ void Highlight_HighlightBuffer(Buffer *buf, const Highlight_Set *set, BufferDraw
             newTape = tape;
             Highlight_Rule *rule = &set->rules[i];
             switch (rule->rule_type) {
-            case Highlight_Rule_Redex:
-                match = In_ProcessRedex(rule->rule_redex, &newTape);
-                break;
-            case Highlight_Rule_Lookahead:
-                match = In_ProcessLookahead(rule->rule_lookahead.data, rule->rule_lookahead.tail, &newTape);
-                break;
-            case Highlight_Rule_Wrapped:
-                match = In_ProcessWrapped(rule->rule_wrapped.begin, rule->rule_wrapped.end, rule->rule_wrapped.slash, &newTape);
-                break;
-            case Highlight_Rule_AnyKw:
-                match = In_ProcessAnyKw(rule->rule_anykw, &newTape);
-                break;
-            default: 
-                break;
+                case Highlight_Rule_Redex:
+                    match = In_ProcessRedex(&rule->rule_redex, &newTape);
+                    break;
+                case Highlight_Rule_Lookahead:
+                    match = In_ProcessLookahead(&rule->rule_lookahead.data, &rule->rule_lookahead.tail, &newTape);
+                    break;
+                case Highlight_Rule_Wrapped:
+                    match = In_ProcessWrapped(&rule->rule_wrapped.begin, &rule->rule_wrapped.end, &rule->rule_wrapped.slash, &newTape);
+                    break;
+                case Highlight_Rule_AnyKw:
+                    match = In_ProcessAnyKw(rule->rule_anykw.exprs, rule->rule_anykw.exprs_len, &newTape);
+                    break;
+                default: 
+                    break;
             }
 
             if (match) {

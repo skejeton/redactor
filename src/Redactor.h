@@ -18,7 +18,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdbool.h>
 #include "Buffer.h"
-#include "Redex.h"
+#include "Redex/Redex.h"
 #include "Util.h"
 #include "BufferDraw.h"
 #include "Highlight.h"
@@ -81,6 +81,7 @@ struct Redactor {
     FILE         *file_handle;
     Buffer        file_buffer;
     Cursor        file_cursor;
+    Highlight_Set file_highlightset_c;
 
     Input         input;
 }

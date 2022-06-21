@@ -9,9 +9,9 @@ int total_asserts, total_passed;
 
 int main() 
 {
-    // RunTest(Test_Buffer_Main());
-    // RunTest(Test_BufferTape_Main());
+    RunTest(Test_Buffer_Main());
+    RunTest(Test_BufferTape_Main());
     RunTest(Test_Redex_Compiler_Main());
-    // RunTest(Test_Redex_Main());
+    RunTest(Test_Redex_Main());
     Tally();
 }

@@ -140,6 +140,7 @@ void Redactor_Init(Redactor *rs)
     rs->program_running = true;
     rs->toy_textureViewer_scale = 1;
     rs->file_buffer = Buffer_Init();
+    rs->file_highlightset_c = HighlightSets_Compile(&HighlightSets_C);
 
     // TODO: Handle loading resources better
     SDL_Surface *bgSurface = SDL_LoadBMP(Redactor_GetTempResPath(rs, "debgtool.bmp"));
@@ -390,7 +391,7 @@ void Redactor_Draw(Redactor *rs)
 }
 
 void In_InvalidateBuffer(Redactor *rs) {
-    Highlight_HighlightBuffer(&rs->file_buffer, &HighlightSets_C, &rs->render_drawSegments);
+    Highlight_HighlightBuffer(&rs->file_buffer, &rs->file_highlightset_c, &rs->render_drawSegments);
 }
 
 void Redactor_HandleEvents(Redactor *rs)

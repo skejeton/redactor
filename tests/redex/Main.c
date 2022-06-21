@@ -1,5 +1,5 @@
 #include "../test.h"
-#include "src/Redex.h"
+#include "src/Redex/Redex.h"
 #include <string.h>
 #include <stdbool.h>
 #define BIG_ENOUGH 128
@@ -125,7 +125,10 @@ void Test_Redex_Main()
         for (int j = 0; test->sequence[j].text; ++j) {
             printf("------ '%s' against '%s'\n", test->redex, test->sequence[j].text);
             Buffer buf = Buffer_InitFromString(test->sequence[j].text);
-            Redex_Match match = Redex_GetMatch(BufferTape_Init(&buf), test->redex);
+            Redex_CompiledExpression expr = Redex_Compile(test->redex);
+            Redex_Match match = Redex_GetMatch(BufferTape_Init(&buf), &expr);
+            Redex_CompiledExpressionDeinit(&expr);
+
 
             if (test->sequence[j].match) {
                 Expect(match.success);

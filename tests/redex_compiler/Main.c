@@ -2,7 +2,7 @@
 #include "src/Redex/Redex.h"
 
 void In_CharsetSynopsis(Redex_Charset set) {
-    printf("[");
+    printf("\x1b[32m[");
     if (set.inverted) {
         printf("not ");
     }
@@ -18,21 +18,21 @@ void In_CharsetSynopsis(Redex_Charset set) {
             printf("%lc-%lc", range.from, range.to);
         }
     }
-    printf("]");
+    printf("]\x1b[0m");
 }
 
 void In_GroupSynopsis(Redex_Group group) 
 {
     const char *QNT_CHARS[] = {
         [Redex_Quantifier_None] = "",
-        [Redex_Quantifier_All] = "*",
-        [Redex_Quantifier_Greedy] = "+",
-        [Redex_Quantifier_Lazy] = "?" ,
+        [Redex_Quantifier_All] = "\x1b[31m*\x1b[0m",
+        [Redex_Quantifier_Greedy] = "\x1b[32m+\x1b[0m",
+        [Redex_Quantifier_Lazy] = "\x1b[34m?\x1b[0m" ,
     };
 
     for (int i = 0; i < group.subgroups_len; ++i) {
         if (i != 0) {
-            printf("->");
+            printf("\x1b[30m->\x1b[0m");
         }
         
         Redex_SubGroup subgroup = group.subgroups[i];
@@ -42,19 +42,21 @@ void In_GroupSynopsis(Redex_Group group)
                 printf("%lc", subgroup.ch);
                 break;
             case Redex_SubGroup_Group: 
-                printf("(");
+                printf("\x1b[33m(\x1b[0m");
                 In_GroupSynopsis(subgroup.group);
-                printf(")");
+                printf("\x1b[33m)\x1b[0m");
                 break;
             case Redex_SubGroup_Charset: 
                 In_CharsetSynopsis(subgroup.charset);
                 break;
-            case Redex_SubGroup_CharacterClass:
+            case Redex_SubGroup_CharacterClass:            
+                printf("\x1b[32m");
                 switch(subgroup.character_class) {
                     case Redex_CharacterClass_Any:
                         printf("[ANY_CHAR]");
                         break;
                 }
+                printf("\x1b[0m");
                 break; 
         }
         
@@ -64,7 +66,7 @@ void In_GroupSynopsis(Redex_Group group)
 
 void Test_Redex_Compiler_Main()
 {
-    Redex_CompiledExpression expr = Redex_Compile("ab\\.c.d[a-z0-9]e?(f12)*?3+");
+    Redex_CompiledExpression expr = Redex_Compile("[H][e][l][\\n_\\s][o]");
     In_GroupSynopsis(expr);
     Redex_CompiledExpressionDeinit(&expr);
 

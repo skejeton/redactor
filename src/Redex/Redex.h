@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "src/Utf8.h"
+#include "src/BufferTape.h"
+
+
+// COMPILER:
 
 enum {
     Redex_SubGroup_Char,
@@ -63,5 +67,14 @@ typedef Redex_Group Redex_CompiledExpression;
 
 Redex_CompiledExpression Redex_Compile(const char *redex);
 void Redex_CompiledExpressionDeinit(Redex_CompiledExpression *expr);
+
+// MATCHER:
+struct {
+    bool success;
+    BufferTape end;
+}
+typedef Redex_Match;
+
+Redex_Match Redex_GetMatch(BufferTape tape, Redex_Group *group);
 
 #endif

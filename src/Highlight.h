@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include "BufferDraw.h"
+#include "Redex/Redex.h"
 
 enum {
     Highlight_Rule_AnyKw,
@@ -15,13 +16,16 @@ struct {
     int rule_type;
     SDL_Color color;
     union {
-        const char **rule_anykw;
+        struct {
+            Redex_CompiledExpression *exprs;
+            size_t exprs_len;
+        } rule_anykw;
         struct { 
-            const char *begin, *end, *slash;
+            Redex_CompiledExpression begin, end, slash;
         } rule_wrapped;
-        const char *rule_redex;
+        Redex_CompiledExpression rule_redex;
         struct { 
-            const char *data, *tail;
+            Redex_CompiledExpression data, tail;
         } rule_lookahead;
     };
 }

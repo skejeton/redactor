@@ -161,7 +161,7 @@ Redex_CompiledExpression Redex_Compile(const char *redex)
     return out;
 }
 
-Redex_CompiledExpression Redex_CompiledExpressionDeinit(Redex_CompiledExpression *expr)
+void Redex_CompiledExpressionDeinit(Redex_CompiledExpression *expr)
 {
     for (int i = 0; i < expr->subgroups_len; ++i) {
         Redex_SubGroup *sub = &expr->subgroups[i];
