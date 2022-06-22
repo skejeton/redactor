@@ -66,8 +66,38 @@ void In_GroupSynopsis(Redex_Group group)
 
 void Test_Redex_Compiler_Main()
 {
-    Redex_CompiledExpression expr = Redex_Compile("He?l+o*[lこx]");
+    Redex_CompiledExpression expr = Redex_Compile("a?b+c*[d1-9](e)[^f].");
     In_GroupSynopsis(expr);
+
+    Expect(expr.subgroups[0].type == Redex_SubGroup_Char);
+    Expect(expr.subgroups[0].ch == 'a');
+    Expect(expr.subgroups[0].quantifier == Redex_Quantifier_Lazy);
+    
+    Expect(expr.subgroups[1].type == Redex_SubGroup_Char);
+    Expect(expr.subgroups[1].ch == 'b');
+    Expect(expr.subgroups[1].quantifier == Redex_Quantifier_Greedy);
+    
+    Expect(expr.subgroups[2].type == Redex_SubGroup_Char);
+    Expect(expr.subgroups[2].ch == 'c');
+    Expect(expr.subgroups[2].quantifier == Redex_Quantifier_All);
+    
+    Expect(expr.subgroups[3].type == Redex_SubGroup_Charset);
+    Expect(expr.subgroups[3].charset.ranges[0].from == 'd' && expr.subgroups[3].charset.ranges[0].to == 'd');
+    Expect(expr.subgroups[3].charset.ranges[1].from == '1' && expr.subgroups[3].charset.ranges[1].to == '9');
+    Expect(expr.subgroups[3].quantifier == Redex_Quantifier_None);
+
+    Expect(expr.subgroups[4].type == Redex_SubGroup_Group);
+    {
+        Expect(expr.subgroups[4].group.subgroups[0].type == Redex_SubGroup_Char);
+        Expect(expr.subgroups[4].group.subgroups[0].ch == 'e');
+        Expect(expr.subgroups[4].group.subgroups[0].quantifier == Redex_Quantifier_None);
+    }
+    Expect(expr.subgroups[5].type == Redex_SubGroup_Charset);
+    Expect(expr.subgroups[5].quantifier == Redex_Quantifier_None);
+
+    Expect(expr.subgroups[6].type == Redex_SubGroup_CharacterClass);
+    Expect(expr.subgroups[6].character_class == Redex_CharacterClass_Any);
+
     Redex_CompiledExpressionDeinit(&expr);
 
     printf("\n");
