@@ -120,3 +120,32 @@ void Highlight_HighlightBuffer(Buffer *buf, const Highlight_Set *set, BufferDraw
     BufferDraw_InsertSegment(out_segments, tape.cursor.line, tape.cursor.column, BufferTape_GetSubstringMemoryOffset(&tape), Redactor_Color_Fore);
 }
 
+void Highlight_HighlightSetDeinit(Highlight_Set *set)
+{
+    for (size_t i = 0; i < set->rules_len; ++i) {
+        Highlight_Rule *rule = &set->rules[i];
+        switch (rule->rule_type) {
+            case Highlight_Rule_AnyKw:
+                for (int i = 0; i < rule->rule_anykw.exprs_len; ++i) {
+                    Redex_CompiledExpressionDeinit(&rule->rule_anykw.exprs[i]);
+                }
+                // FIXME(skejeton): This is not a good idea to assume that
+                // the array was allocated through malloc.
+                free(rule->rule_anykw.exprs);
+                break;
+            case Highlight_Rule_Lookahead:
+                Redex_CompiledExpressionDeinit(&rule->rule_lookahead.data);
+                Redex_CompiledExpressionDeinit(&rule->rule_lookahead.tail);
+                break;
+            case Highlight_Rule_Redex:
+                Redex_CompiledExpressionDeinit(&rule->rule_redex);
+                break;
+            case Highlight_Rule_Wrapped:
+                Redex_CompiledExpressionDeinit(&rule->rule_wrapped.begin);
+                Redex_CompiledExpressionDeinit(&rule->rule_wrapped.end);
+                Redex_CompiledExpressionDeinit(&rule->rule_wrapped.slash);
+                break;
+        }
+    }
+    free(set->rules);
+}

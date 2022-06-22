@@ -181,6 +181,7 @@ void Redactor_End(Redactor *rs)
 {
     // NOTE: Allocated in Highlighting
     BufferDraw_InvalidateSegments(&rs->render_drawSegments);
+    Highlight_HighlightSetDeinit(&rs->file_highlightset_c);
     // NOTE: Allocated in UseArgs
     Buffer_Deinit(&rs->file_buffer);
     // NOTE: Allocated in GetTempResPath

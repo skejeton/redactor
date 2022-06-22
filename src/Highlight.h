@@ -38,5 +38,6 @@ struct {
 typedef Highlight_Set;
 
 void Highlight_HighlightBuffer(Buffer *buf, const Highlight_Set *set, BufferDrawSegments *out_segments);
+void Highlight_HighlightSetDeinit(Highlight_Set *set);
 
 #endif
