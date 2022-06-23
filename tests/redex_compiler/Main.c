@@ -1,5 +1,5 @@
 #include "../test.h"
-#include "src/Redex/Redex.h"
+#include "Redex/Redex.h"
 
 void In_CharsetSynopsis(Redex_Charset set) {
     printf("\x1b[32m[");
@@ -51,7 +51,7 @@ void In_GroupSynopsis(Redex_Group group)
                 break;
             case Redex_SubGroup_CharacterClass:            
                 printf("\x1b[32m");
-                switch(subgroup.character_class) {
+                switch (subgroup.character_class) {
                     case Redex_CharacterClass_Any:
                         printf("[ANY_CHAR]");
                         break;
@@ -68,6 +68,7 @@ void Test_Redex_Compiler_Main()
 {
     Redex_CompiledExpression expr = Redex_Compile("a?b+c*[d1-9](e)[^f].");
     In_GroupSynopsis(expr);
+
 
     Expect(expr.subgroups[0].type == Redex_SubGroup_Char);
     Expect(expr.subgroups[0].ch == 'a');
