@@ -10,10 +10,11 @@ enum {
     Highlight_Rule_Wrapped,
     Highlight_Rule_Redex,
     Highlight_Rule_Lookahead,
-};
+}
+typedef Highlight_RuleType;
 
 struct {
-    int rule_type;
+    Highlight_RuleType rule_type;
     SDL_Color color;
     union {
         struct {
