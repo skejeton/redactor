@@ -277,11 +277,13 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
         col += 1;
     }
     
-    return (SDL_Rect){rs->render_scroll.x+x, rs->render_scroll_intermediate.y+y, 2, h};
+    return (SDL_Rect){rs->render_scroll.x+x, rs->render_scroll.y+y, 2, h};
 }
 
 void Redactor_MoveCursorToVisibleArea(Redactor *rs)
 {
+    // Attempt to scroll to the start 
+    rs->render_scroll.x = 0;
     SDL_Rect cursor_rect = Redactor_GetCursorRect(rs);
 
     if (cursor_rect.y < 0) {
