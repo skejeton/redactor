@@ -40,7 +40,7 @@ void BufferDraw_DrawBuffer(Redactor *rs, Buffer *buf, BufferDrawSegments *seg)
 
         while (start.lineNo < segment.line) {
             Redactor_DrawText(rs, segment.fgcolor, start.line.text, 0, position.x, position.y, start.column);
-            position.x = rs->render_scroll.x;
+            position.x = rs->render_scroll_intermediate.x;
             position.y += rs->render_font_height;
             start.column = 0;
             start.line = buf->lines[++start.lineNo];
