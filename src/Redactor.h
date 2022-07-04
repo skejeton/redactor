@@ -2,6 +2,7 @@
 #define R_REDACTOR_H
 
 // Setup platform macros
+#include <SDL2/SDL_rect.h>
 #if defined(__linux__)
 #   define Platform_Is_Linux
 #elif defined(_WIN32)
@@ -67,7 +68,8 @@ struct Redactor {
     char         *program_dataPath;
     bool          program_running;
 
-    SDL_FPoint    render_scroll;
+    SDL_FPoint    render_scroll; // the target scroll
+    SDL_FPoint    render_scroll_intermediate;
     SDL_Point     render_window_size;
     GlyphChunk   *render_font_chunks[Redactor_GlyphmapChunkMax];
     SDL_Window   *render_sdl_window;

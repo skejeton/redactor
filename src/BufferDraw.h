@@ -9,7 +9,8 @@ struct {
     size_t line;    // Line index
     size_t offset;  // Line string offset (NOT column)
     int column;     // Column at which segment is at
-    SDL_Color color;// RGBA color
+    SDL_Color fgcolor;
+    SDL_Color bgcolor;
 }
 typedef BufferDrawSegment;
 
@@ -19,6 +20,8 @@ struct BufferDrawSegments {
 }
 typedef BufferDrawSegments;
 
+// Returns segments colliding with the range
+void BufferDraw_GetTangentSegments(Range range, BufferDrawSegments **out_seg, size_t *out_size);
 // Removes all segments from the segment list, invalidating them
 void BufferDraw_InvalidateSegments(BufferDrawSegments *seg);
 // Adds a segment relative to previous segment

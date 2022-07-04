@@ -277,7 +277,7 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
         col += 1;
     }
     
-    return (SDL_Rect){rs->render_scroll.x+x, rs->render_scroll.y+y, 2, h};
+    return (SDL_Rect){rs->render_scroll.x+x, rs->render_scroll_intermediate.y+y, 2, h};
 }
 
 void Redactor_MoveCursorToVisibleArea(Redactor *rs)
@@ -289,6 +289,12 @@ void Redactor_MoveCursorToVisibleArea(Redactor *rs)
     }
     if ((cursor_rect.y + cursor_rect.h) > rs->render_window_size.y) {
         rs->render_scroll.y -= (cursor_rect.y + cursor_rect.h) - rs->render_window_size.y;
+    }
+    if (cursor_rect.x < 0) {
+        rs->render_scroll.x -= cursor_rect.x;
+    }
+    if ((cursor_rect.x + cursor_rect.w) > rs->render_window_size.x) {
+        rs->render_scroll.x -= (cursor_rect.x + cursor_rect.w) - rs->render_window_size.x;
     }
 }
 
@@ -371,6 +377,8 @@ void Redactor_SetCursorAtScreenPos(Redactor *rs, int x, int y)
 void Redactor_ScrollScreen(Redactor *rs, int byX, int byY)
 {
     rs->render_scroll.y += byY;
+    rs->render_scroll.x += byX;
+
     int hlimit = -((int)rs->file_buffer.lines_len*rs->render_font_height)+rs->render_window_size.y;
     
     // TODO: Figure out why scroll is so weird, it goes into negatives?
@@ -410,6 +418,7 @@ void Redactor_HandleEvents(Redactor *rs)
             break;
         case SDL_TEXTINPUT:
             rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, event.text.text);
+            Redactor_MoveCursorToVisibleArea(rs);
             In_InvalidateBuffer(rs);
             break;
         case SDL_MOUSEBUTTONDOWN:
@@ -488,6 +497,9 @@ void Redactor_HandleEvents(Redactor *rs)
 
 void Redactor_Cycle(Redactor *rs)
 {
+    rs->render_scroll_intermediate.x += (rs->render_scroll.x-rs->render_scroll_intermediate.x)/5;
+    rs->render_scroll_intermediate.y += (rs->render_scroll.y-rs->render_scroll_intermediate.y)/5;
+
     Redactor_HandleEvents(rs);
     
     SDL_GetWindowSize(rs->render_sdl_window, &rs->render_window_size.x, &rs->render_window_size.y);
