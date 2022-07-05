@@ -15,6 +15,7 @@ enum {
     Redex_SubGroup_Group,
     Redex_SubGroup_Charset,
     Redex_SubGroup_CharacterClass,
+    Redex_SubGroup_Count
 }
 typedef Redex_SubGroup_Type;
 
@@ -22,12 +23,14 @@ enum {
     Redex_Quantifier_None,     //
     Redex_Quantifier_All,      // *
     Redex_Quantifier_Greedy,   // +
-    Redex_Quantifier_Lazy      // ?
+    Redex_Quantifier_Lazy,     // ?
+    Redex_Quantifier_Count
 }
 typedef Redex_Quantifier;
 
 enum {
-    Redex_CharacterClass_Any   // .
+    Redex_CharacterClass_Any,  // .
+    Redex_CharacterClass_Count
 }
 typedef Redex_CharacterClass;
 

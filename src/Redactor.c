@@ -41,7 +41,6 @@ void Redactor_PrintMeta(Redactor *rs)
 
 void Redactor_PackCharTab(Redactor *rs, int page)
 {
-
     int sfw = 300, sfh = 300, x = 0, y = 0, maxh = 0, padding = 0;
     SDL_Surface *dsf = SDL_CreateRGBSurfaceWithFormat(0, sfw, sfh, 32, SDL_PIXELFORMAT_RGBA32);
     SDL_SetSurfaceBlendMode(dsf, SDL_BLENDMODE_BLEND);

@@ -1,5 +1,4 @@
 #include "Redex.h"
-#include "BufferTape.h"
 #include <assert.h>
 #include <stdlib.h>
 
@@ -20,6 +19,7 @@ static bool In_MatchSubgroup(BufferTape *tape, Redex_SubGroup *subgroup)
                     } 
                     BufferTape_Next(tape);
                 } break;
+                case Redex_CharacterClass_Count: assert(false); break;
             }
         } break;
         case Redex_SubGroup_Charset: {
@@ -51,6 +51,7 @@ static bool In_MatchSubgroup(BufferTape *tape, Redex_SubGroup *subgroup)
             *tape = match.end;
             return match.success;
         } break;
+        case Redex_SubGroup_Count: assert(false); break;
     }
 
     return true;
@@ -148,6 +149,7 @@ static bool In_MatchQuant(BufferTape *tape, Redex_SubGroup *subgroup)
                     return In_MatchSubgroup(tape, subgroup);
             }
         } break;
+        case Redex_Quantifier_Count: assert(false); break;
     }
     assert(false);
 }
