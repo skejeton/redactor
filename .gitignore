@@ -1,7 +1,8 @@
 *.o
 *.d
+callgrind.out.*
+*.sublime-workspace
 bin/redactor
 bin/test
-*.sublime-workspace
 tags
 L
