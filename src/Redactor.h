@@ -50,6 +50,7 @@ typedef Background;
 
 struct {
     bool ks_ctrl;
+    bool ks_shift;
 }
 typedef Input;
 

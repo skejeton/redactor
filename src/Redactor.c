@@ -1,5 +1,6 @@
 // Put includes here
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_scancode.h>
 #include <SDL2/SDL_ttf.h>
 #include <string.h>
 #include <stdint.h>
@@ -276,14 +277,15 @@ SDL_Rect Redactor_GetCursorRect(Redactor *rs)
         col += 1;
     }
     
-    return (SDL_Rect){rs->render_scroll.x+x, rs->render_scroll.y+y, 2, h};
+    return (SDL_Rect){x, y, 2, h};
 }
 
 void Redactor_MoveCursorToVisibleArea(Redactor *rs)
 {
     // Attempt to scroll to the start 
-    rs->render_scroll.x = 0;
     SDL_Rect cursor_rect = Redactor_GetCursorRect(rs);
+    cursor_rect.x += rs->render_scroll.x;
+    cursor_rect.y += rs->render_scroll.y;
 
     if (cursor_rect.y < 0) {
         rs->render_scroll.y -= cursor_rect.y;
@@ -302,6 +304,11 @@ void Redactor_MoveCursorToVisibleArea(Redactor *rs)
 void Redactor_DrawCursor(Redactor *rs) 
 {
     SDL_Rect cursor_rect = Redactor_GetCursorRect(rs);
+    cursor_rect.x += rs->render_scroll_intermediate.x;
+    cursor_rect.y += rs->render_scroll_intermediate.y;
+    if ((cursor_rect.x+cursor_rect.w) > rs->render_window_size.x) {
+        cursor_rect.x = rs->render_window_size.x - cursor_rect.w;
+    }
 
     SDL_SetRenderDrawColor(rs->render_sdl_renderer, 255, 255, 255, 255);
     SDL_RenderFillRect(rs->render_sdl_renderer, &cursor_rect);
@@ -334,7 +341,8 @@ void Redactor_DrawTextureViewer(Redactor *rs, SDL_Texture *texture)
 // -- control
 void Redactor_SetCursorAtScreenPos(Redactor *rs, int x, int y)
 {
-    int line = (y - rs->render_scroll.y) / rs->render_font_height;
+    int line = (y - rs->render_scroll_intermediate.y) / rs->render_font_height;
+    x -= rs->render_scroll_intermediate.x;
 
     if (line < 0) {
         line = 0;
@@ -389,6 +397,9 @@ void Redactor_ScrollScreen(Redactor *rs, int byX, int byY)
 
     if (rs->render_scroll.y > 0)
         rs->render_scroll.y = 0;
+
+    if (rs->render_scroll.x > 0)
+        rs->render_scroll.x = 0;
 }
 
 void Redactor_Draw(Redactor *rs)
@@ -415,7 +426,11 @@ void Redactor_HandleEvents(Redactor *rs)
             break;
         case SDL_MOUSEWHEEL:
             rs->toy_textureViewer_scale += event.wheel.y/10.0;
-            Redactor_ScrollScreen(rs, 0, event.wheel.y * rs->render_font_height);
+            if (rs->input.ks_shift) {
+                Redactor_ScrollScreen(rs, event.wheel.y * 10, 0);
+            } else {
+                Redactor_ScrollScreen(rs, event.wheel.x * 10, event.wheel.y * rs->render_font_height);
+            }
             break;
         case SDL_TEXTINPUT:
             rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, event.text.text);
@@ -435,6 +450,10 @@ void Redactor_HandleEvents(Redactor *rs)
                 case SDL_SCANCODE_RCTRL:
                     rs->input.ks_ctrl = false;
                     break;
+                case SDL_SCANCODE_LSHIFT:
+                case SDL_SCANCODE_RSHIFT:
+                    rs->input.ks_shift = false;
+                    break;
                 default:;
             }
         } break;
@@ -444,6 +463,10 @@ void Redactor_HandleEvents(Redactor *rs)
             case SDL_SCANCODE_LCTRL:
             case SDL_SCANCODE_RCTRL:
                 rs->input.ks_ctrl = true;
+                break;
+            case SDL_SCANCODE_LSHIFT:
+            case SDL_SCANCODE_RSHIFT:
+                rs->input.ks_shift = true;
                 break;
             // -- control keystrokes
             case SDL_SCANCODE_V: 
@@ -469,8 +492,11 @@ void Redactor_HandleEvents(Redactor *rs)
                 break;
             case SDL_SCANCODE_BACKSPACE:
                 rs->file_cursor = Buffer_RemoveCharacterUnder(&rs->file_buffer, rs->file_cursor);
+                // try to push back cursor as far up right as we can
+                rs->render_scroll.x = 0;
                 Redactor_MoveCursorToVisibleArea(rs);
                 In_InvalidateBuffer(rs);
+                rs->render_scroll_intermediate.x = rs->render_scroll.x;
                 break;
             case SDL_SCANCODE_UP:
                 rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, -1, 0);
@@ -498,10 +524,9 @@ void Redactor_HandleEvents(Redactor *rs)
 
 void Redactor_Cycle(Redactor *rs)
 {
+    Redactor_HandleEvents(rs);
     rs->render_scroll_intermediate.x += (rs->render_scroll.x-rs->render_scroll_intermediate.x)/5;
     rs->render_scroll_intermediate.y += (rs->render_scroll.y-rs->render_scroll_intermediate.y)/5;
-
-    Redactor_HandleEvents(rs);
     
     SDL_GetWindowSize(rs->render_sdl_window, &rs->render_window_size.x, &rs->render_window_size.y);
     Redactor_Draw(rs);
