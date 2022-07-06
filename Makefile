@@ -25,7 +25,7 @@ $(EXECUTABLE): $(OBJECTS)
 test_build: $(TEST_SOURCES) $(TEST_EXECUTABLE) $(HEADERS) $(TEST_HEADERS) Makefile
 
 test: test_build
-	./bin/test
+	./bin/test $(args)
 
 $(TEST_EXECUTABLE): $(TEST_OBJECTS)
 	$(CC) $(ASAN) $(CCFLAGS) $(LDFLAGS) $(TEST_OBJECTS) -o $@
