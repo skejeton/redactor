@@ -58,6 +58,8 @@ static bool In_ProcessRedex(Redex_CompiledExpression *expr, BufferTape *tape)
     }
 }
 
+static bool In_BufferTapeEqual(Redex_CompiledExpression )
+
 static bool In_ProcessAnyKw(Redex_CompiledExpression *exprs, size_t exprs_len, BufferTape *tape)
 {
     // TODO: Binary search

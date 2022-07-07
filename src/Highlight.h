@@ -18,8 +18,7 @@ struct {
     SDL_Color color;
     union {
         struct {
-            Redex_CompiledExpression *exprs;
-            size_t exprs_len;
+            char **keywords;
         } rule_anykw;
         struct { 
             Redex_CompiledExpression begin, end, slash;

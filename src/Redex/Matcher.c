@@ -1,3 +1,4 @@
+#include "BufferTape.h"
 #include "Redex.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -25,8 +26,8 @@ static bool In_MatchSubgroup(BufferTape *tape, Redex_SubGroup *subgroup)
             }
         } break;
         case Redex_SubGroup_Charset: {
+            int ch = BufferTape_Next(tape);
             if (subgroup->charset.inverted) {
-                int ch = BufferTape_Next(tape);
                 for (size_t i = 0; i < subgroup->charset.ranges_len; ++i) {
                     Redex_CharacterRange range = subgroup->charset.ranges[i];
 
@@ -36,7 +37,6 @@ static bool In_MatchSubgroup(BufferTape *tape, Redex_SubGroup *subgroup)
                 }    
                 return true;       
             } else {
-                int ch = BufferTape_Next(tape);
                 for (size_t i = 0; i < subgroup->charset.ranges_len; ++i) {
                     Redex_CharacterRange range = subgroup->charset.ranges[i];
 
@@ -107,6 +107,42 @@ static bool In_MatchCharFastNone(BufferTape *tape, uint32_t ch)
     return BufferTape_Next(tape) == ch;
 }
 
+// Matches a character set with * quantifier
+static bool In_MatchCharsetFastAll(BufferTape *tape, Redex_Charset charset) 
+{
+    int ch = BufferTape_Get(tape);
+    if (charset.inverted) {
+        while (ch) {
+            ch = BufferTape_Get(tape);
+            for (size_t i = 0; i < charset.ranges_len; ++i) {
+                Redex_CharacterRange range = charset.ranges[i];
+
+                if (ch >= range.from && ch <= range.to) {
+                    goto end;
+                }
+            }    
+            BufferTape_Next(tape);
+        }
+    } else {
+        while (ch) {
+            ch = BufferTape_Get(tape);
+            for (size_t i = 0; i < charset.ranges_len; ++i) {
+                Redex_CharacterRange range = charset.ranges[i];
+
+                if (ch >= range.from && ch <= range.to) {
+                    goto again;
+                }
+            }
+            break;
+            again:
+            BufferTape_Next(tape);
+        }
+    }
+
+end:
+    return true;
+}
+
 static bool In_MatchQuant(BufferTape *tape, Redex_SubGroup *subgroup)
 {
     switch (subgroup->quantifier) {
@@ -114,6 +150,8 @@ static bool In_MatchQuant(BufferTape *tape, Redex_SubGroup *subgroup)
             switch (subgroup->type) {
                 case Redex_SubGroup_Char: 
                     return In_MatchCharFastAll(tape, subgroup->ch);
+                case Redex_SubGroup_Charset: 
+                    return In_MatchCharsetFastAll(tape, subgroup->charset);
                 default:
                     while (In_MatchSubgroupRetreat(tape, subgroup))
                         ;
