@@ -16,7 +16,7 @@ all: $(OUTPUT)
 	$(OUTPUT) $(args)
 
 %.o: %.c
-	$(CC) $(SHARED_CFLAGS) $(SRC_CFLAGS) -c $< -o $@
+	$(CC) $(SHARED_CFLAGS) $(SRC_CFLAGS) -c $< -o $@ -DCFLAGS="\"$(SHARED_CFLAGS)\""
 
 $(OUTPUT): $(SRC_OBJECTS)
 	$(CC) $(SHARED_CFLAGS) $(SRC_CFLAGS) $(SRC_OBJECTS) $(SRC_LIBS) -o $(OUTPUT)

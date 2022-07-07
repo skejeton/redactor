@@ -11,6 +11,7 @@ void Test_Buffer_Main();
 void Test_BufferTape_Main();
 void Test_Redex_Main();
 void Test_Redex_Compiler_Main();
+void Bench_Redex_Main();
 
 int total_asserts, total_passed;
 
@@ -67,13 +68,14 @@ static KeyValue ParseArg(Arguments *args)
 struct {
     char *name;
     void (*test)();
+    void (*bench)();
 }
 typedef Test;
 
 Test const static tests[] = {
     {"buffer", Test_Buffer_Main},
     {"buffertape", Test_BufferTape_Main},
-    {"redex", Test_Redex_Main},
+    {"redex", Test_Redex_Main, Bench_Redex_Main},
     {"redex_compiler", Test_Redex_Compiler_Main}
 };
 
@@ -81,8 +83,22 @@ const int tests_len = sizeof tests / sizeof tests[0];
 
 void RunTest(Test const *t)
 {
+    if (t->test == NULL) {
+        fprintf(stderr, "Error: `%s` doesn't have a test\n", t->name);
+        exit(-1);
+    }
     printf("%s:\n", t->name);
     t->test();
+}
+
+void RunBench(Test const *t)
+{
+    if (t->bench == NULL) {
+        fprintf(stderr, "Error: `%s` doesn't have a benchmark\n", t->name);
+        exit(-1);
+    }
+    printf("%s:\n", t->name);
+    t->bench();
 }
 
 char *CopyLowerString(const char *s)
@@ -130,28 +146,63 @@ void HandleMode_Test(const char *test_name)
         if (test != NULL) {
             RunTest(test);
         } else {
-            fprintf(stderr, "Error: Can't find test %s! Add `-mode list` argument to list tests\n", test_name);
+            fprintf(stderr, "Error: Can't find test %s! Use `-mode list` argument to list tests\n", test_name);
             return;
         }
     } else {
         for (int i = 0; i < tests_len; ++i) {
-            RunTest(&tests[i]);
+            if (tests[i].test != NULL) {
+                RunTest(&tests[i]);
+            }
         }
     }
 
     Tally();
 }
 
-void HandleMode_TestList()
+void HandleMode_Bench(const char *bench_name)
 {
+    #ifdef CFLAGS
+    printf("Benchmarking with flags `%s`\n", CFLAGS);
+    #endif
+    if (bench_name != NULL) {
+        const Test *test = FindTest(bench_name);
+        if (test != NULL) {
+            RunBench(test);
+        } else {
+            fprintf(stderr, "Error: Can't find benchmark %s! Use `-mode list` argument to list benchmarks\n", bench_name);
+            return;
+        }
+    } else {
+        for (int i = 0; i < tests_len; ++i) {
+            if (tests[i].bench != NULL) {
+                RunBench(&tests[i]);
+            }
+        }
+    }
+
+    TallyBench();
+}
+
+void HandleMode_List()
+{
+    printf("\nt: has test\tb: has benchmark\nExample: tb:flying_ship (has test and benchmark)\n\n");
+
     for (int i = 0; i < tests_len; ++i) {
         if (i != 0) {
             printf(", ");
         }
-
+        if (tests[i].test) {
+            printf("t");
+        }
+        if (tests[i].bench) {
+            printf("b");
+        }
+        printf(":");
+        assert(tests[i].test || tests[i].bench);
         printf("%s", tests[i].name);
     }
-    printf("\n");
+    printf("\n\n");
 }
 
 void HandleMode_Help()
@@ -161,9 +212,10 @@ void HandleMode_Help()
         "\t-mode <mode_name> \n"
         "\t-test <test_name> Run specific test\n"
         "<mode_name>\n"
-        "\ttest (default)\n"
-        "\tlist (list test names)\n"
-        "\thelp (print this page)\n"
+        "\tbench (run benchmarks)\n"
+        "\ttest  (default)\n"
+        "\tlist  (list tests and benchmarks)\n"
+        "\thelp  (print this page)\n"
     );
 }
 
@@ -187,7 +239,8 @@ int main(int argc, char **argv)
 
     enum {
         Mode_Test,
-        Mode_TestList,
+        Mode_Bench,
+        Mode_List,
         Mode_Help
     } mode = Mode_Test;
 
@@ -195,16 +248,17 @@ int main(int argc, char **argv)
     const char *test_name = NULL;
 
     IterArgs(arg, argc, argv) {
-        if (StrEqualNocase(arg.key, "test")) {
+        if (StrEqualNocase(arg.key, "bench") || StrEqualNocase(arg.key, "test")) {
             if (arg.val == NULL) {
-                printf("Choose test:\n\t");
-                mode = Mode_TestList;
+                printf("Choose test/benchmark:\n\t");
+                mode = Mode_List;
                 break;
             }
             test_name = arg.val;
         } else if (StrEqualNocase(arg.key, "mode")) {
-            if      (StrEqualNocase(arg.val, "test")) { mode = Mode_Test; }
-            else if (StrEqualNocase(arg.val, "list")) { mode = Mode_TestList; }
+            if      (StrEqualNocase(arg.val, "bench")) { mode = Mode_Bench; }
+            else if (StrEqualNocase(arg.val, "test")) { mode = Mode_Test; }
+            else if (StrEqualNocase(arg.val, "list")) { mode = Mode_List; }
             else if (StrEqualNocase(arg.val, "help")) { mode = Mode_Help; }
             else    { fprintf(stderr, "Don't know mode `%s`\n", arg.val); return -1; }
             
@@ -221,12 +275,13 @@ int main(int argc, char **argv)
         case Mode_Test:
             HandleMode_Test(test_name);
             break;
-        case Mode_TestList:
-            ArgWarning(test_name, "test");
-            HandleMode_TestList();
+        case Mode_Bench:
+            HandleMode_Bench(test_name);
+            break;
+        case Mode_List:
+            HandleMode_List();
             break;
         case Mode_Help:
-            ArgWarning(test_name, "test");
             HandleMode_Help();
             break;
     }
