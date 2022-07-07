@@ -3,7 +3,7 @@ AR?=llvm-ar
 OUTPUT?=bin/test
 SYS_LIBS?=-lSDL2 -lSDL2_ttf -lm -lc
 
-SHARED_CFLAGS=-O3# -g -fsanitize=address
+SHARED_CFLAGS?=-O0 -g -fsanitize=address
 
 SRC_CFLAGS=-I. -Isrc -MD
 SRC_LIBS=$(SYS_LIBS) 

@@ -9,7 +9,7 @@ struct {
     Buffer *buffer;
     Cursor cursor;
     uint32_t ch;
-    Line line;
+    char *line;
 }
 typedef BufferTape;
 
@@ -18,10 +18,10 @@ BufferTape BufferTape_InitAt(Buffer *buffer, Cursor cursor);
 
 static inline void BufferTape_CacheChar(BufferTape *tape)
 {
-    if (*tape->line.text == 0 && tape->cursor.line < tape->buffer->lines_len-1) {
+    if (*tape->line == 0 && tape->cursor.line < tape->buffer->lines_len-1) {
         tape->ch = '\n';
     } else {
-        Utf8_Fetch(&tape->ch, tape->line.text);
+        Utf8_Fetch(&tape->ch, tape->line);
     }
 }
 
@@ -30,10 +30,10 @@ static inline int BufferTape_Next(BufferTape *tape)
 {
     uint32_t oldch = tape->ch;
 
-    if (*tape->line.text == 0 && tape->cursor.line < tape->buffer->lines_len-1) {
-        tape->line = tape->buffer->lines[tape->cursor.line+1];
+    if (oldch == '\n') {
+        tape->line = tape->buffer->lines[tape->cursor.line+1].text;
     } else {
-        tape->line.text += Utf8_Fetch(&tape->ch, tape->line.text);
+        tape->line += Utf8_Fetch(&tape->ch, tape->line);
     }
 
     switch (oldch) {
@@ -54,7 +54,12 @@ static inline int BufferTape_Get(BufferTape *tape)
 // Returns memory offset of the line at current column
 static inline size_t BufferTape_GetSubstringMemoryOffset(BufferTape *tape)
 {
-    return tape->line.text-tape->buffer->lines[tape->cursor.line].text;
+    return tape->line-tape->buffer->lines[tape->cursor.line].text;
 } 
+
+static inline Line BufferTape_GetLine(BufferTape *tape)
+{
+    return tape->buffer->lines[tape->cursor.line];
+}
 
 #endif
