@@ -66,7 +66,11 @@ struct Redex_SubGroup {
 }
 typedef Redex_SubGroup;
 
-typedef Redex_Group Redex_CompiledExpression;
+struct {
+    struct Redex_Group root;
+    uint8_t *memory;
+}
+typedef Redex_CompiledExpression;
 
 Redex_CompiledExpression Redex_Compile(const char *redex);
 void Redex_CompiledExpressionDeinit(Redex_CompiledExpression *expr);
@@ -78,6 +82,6 @@ struct {
 }
 typedef Redex_Match;
 
-Redex_Match Redex_GetMatch(BufferTape tape, Redex_Group *group);
+Redex_Match Redex_GetMatch(BufferTape tape, Redex_CompiledExpression *expr);
 
 #endif

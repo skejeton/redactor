@@ -1,5 +1,6 @@
 #include "../test.h"
 #include "Redex/Redex.h"
+#include <assert.h>
 
 void In_CharsetSynopsis(Redex_Charset set) {
     printf("\x1b[32m[");
@@ -58,6 +59,7 @@ void In_GroupSynopsis(Redex_Group group)
                 }
                 printf("\x1b[0m");
                 break; 
+            default: assert(false); break;
         }
         
         printf("%s", QNT_CHARS[subgroup.quantifier]);
@@ -67,37 +69,39 @@ void In_GroupSynopsis(Redex_Group group)
 void Test_Redex_Compiler_Main()
 {
     Redex_CompiledExpression expr = Redex_Compile("a?b+c*[d1-9](e)[^f].");
-    In_GroupSynopsis(expr);
+    Redex_Group group = expr.root;
+    In_GroupSynopsis(expr.root);
 
+    
 
-    Expect(expr.subgroups[0].type == Redex_SubGroup_Char);
-    Expect(expr.subgroups[0].ch == 'a');
-    Expect(expr.subgroups[0].quantifier == Redex_Quantifier_Lazy);
+    Expect(group.subgroups[0].type == Redex_SubGroup_Char);
+    Expect(group.subgroups[0].ch == 'a');
+    Expect(group.subgroups[0].quantifier == Redex_Quantifier_Lazy);
     
-    Expect(expr.subgroups[1].type == Redex_SubGroup_Char);
-    Expect(expr.subgroups[1].ch == 'b');
-    Expect(expr.subgroups[1].quantifier == Redex_Quantifier_Greedy);
+    Expect(group.subgroups[1].type == Redex_SubGroup_Char);
+    Expect(group.subgroups[1].ch == 'b');
+    Expect(group.subgroups[1].quantifier == Redex_Quantifier_Greedy);
     
-    Expect(expr.subgroups[2].type == Redex_SubGroup_Char);
-    Expect(expr.subgroups[2].ch == 'c');
-    Expect(expr.subgroups[2].quantifier == Redex_Quantifier_All);
+    Expect(group.subgroups[2].type == Redex_SubGroup_Char);
+    Expect(group.subgroups[2].ch == 'c');
+    Expect(group.subgroups[2].quantifier == Redex_Quantifier_All);
     
-    Expect(expr.subgroups[3].type == Redex_SubGroup_Charset);
-    Expect(expr.subgroups[3].charset.ranges[0].from == 'd' && expr.subgroups[3].charset.ranges[0].to == 'd');
-    Expect(expr.subgroups[3].charset.ranges[1].from == '1' && expr.subgroups[3].charset.ranges[1].to == '9');
-    Expect(expr.subgroups[3].quantifier == Redex_Quantifier_None);
+    Expect(group.subgroups[3].type == Redex_SubGroup_Charset);
+    Expect(group.subgroups[3].charset.ranges[0].from == 'd' && group.subgroups[3].charset.ranges[0].to == 'd');
+    Expect(group.subgroups[3].charset.ranges[1].from == '1' && group.subgroups[3].charset.ranges[1].to == '9');
+    Expect(group.subgroups[3].quantifier == Redex_Quantifier_None);
 
-    Expect(expr.subgroups[4].type == Redex_SubGroup_Group);
+    Expect(group.subgroups[4].type == Redex_SubGroup_Group);
     {
-        Expect(expr.subgroups[4].group.subgroups[0].type == Redex_SubGroup_Char);
-        Expect(expr.subgroups[4].group.subgroups[0].ch == 'e');
-        Expect(expr.subgroups[4].group.subgroups[0].quantifier == Redex_Quantifier_None);
+        Expect(group.subgroups[4].group.subgroups[0].type == Redex_SubGroup_Char);
+        Expect(group.subgroups[4].group.subgroups[0].ch == 'e');
+        Expect(group.subgroups[4].group.subgroups[0].quantifier == Redex_Quantifier_None);
     }
-    Expect(expr.subgroups[5].type == Redex_SubGroup_Charset);
-    Expect(expr.subgroups[5].quantifier == Redex_Quantifier_None);
+    Expect(group.subgroups[5].type == Redex_SubGroup_Charset);
+    Expect(group.subgroups[5].quantifier == Redex_Quantifier_None);
 
-    Expect(expr.subgroups[6].type == Redex_SubGroup_CharacterClass);
-    Expect(expr.subgroups[6].character_class == Redex_CharacterClass_Any);
+    Expect(group.subgroups[6].type == Redex_SubGroup_CharacterClass);
+    Expect(group.subgroups[6].character_class == Redex_CharacterClass_Any);
 
     Redex_CompiledExpressionDeinit(&expr);
 

@@ -4,6 +4,8 @@
 
 #define REALLOC_PERIOD 32
 
+Redex_Match Redex_MatchGroup(BufferTape tape, Redex_Group *group);
+
 static bool In_MatchSubgroup(BufferTape *tape, Redex_SubGroup *subgroup)
 {
     switch (subgroup->type) {
@@ -47,7 +49,7 @@ static bool In_MatchSubgroup(BufferTape *tape, Redex_SubGroup *subgroup)
 
         } break;
         case Redex_SubGroup_Group: {
-            Redex_Match match = Redex_GetMatch(*tape, &subgroup->group);
+            Redex_Match match = Redex_MatchGroup(*tape, &subgroup->group);
             *tape = match.end;
             return match.success;
         } break;
@@ -154,7 +156,7 @@ static bool In_MatchQuant(BufferTape *tape, Redex_SubGroup *subgroup)
     assert(false);
 }
 
-Redex_Match Redex_GetMatch(BufferTape tape, Redex_Group *group)
+Redex_Match Redex_MatchGroup(BufferTape tape, Redex_Group *group)
 {
     Redex_Match match = (Redex_Match){.success = true, .end = tape};
     for (size_t i = 0; i < group->subgroups_len; ++i) {
@@ -167,4 +169,9 @@ Redex_Match Redex_GetMatch(BufferTape tape, Redex_Group *group)
 
     match.end = tape;
     return match;
+}
+
+Redex_Match Redex_GetMatch(BufferTape tape, Redex_CompiledExpression *expr)
+{
+    return Redex_MatchGroup(tape, &expr->root);
 }

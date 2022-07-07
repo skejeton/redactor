@@ -1,6 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <memory.h>
+#include <assert.h>
 #include "src/Utf8.h"
 #include "Redex.h"
 
@@ -8,7 +10,15 @@
 
 typedef struct {
     const char *source;
+    size_t ranges_len;
+    size_t subgroups_len;
 } In_Compiler;
+
+static In_Compiler In_InitCompiler(const char *redex)
+{
+    In_Compiler co = {redex};
+    return co;
+}
 
 static int32_t In_Fetch(In_Compiler *co)
 {
@@ -31,21 +41,23 @@ static int32_t In_Fetch(In_Compiler *co)
     return new_char;
 }
 
-static void In_AddSubgroup(Redex_Group *group, Redex_SubGroup subgroup)
+static void In_AddSubgroup(In_Compiler *co, Redex_Group *group, Redex_SubGroup subgroup)
 {
     if (group->subgroups_len % REALLOC_PERIOD == 0) {
         group->subgroups = realloc(group->subgroups, sizeof(*group->subgroups) * (group->subgroups_len+512));
     }
 
+    co->subgroups_len += 1;
     group->subgroups[group->subgroups_len++] = subgroup;
 }
 
-static void In_AddRange(Redex_Charset *set, Redex_CharacterRange range)
+static void In_AddRange(In_Compiler *co, Redex_Charset *set, Redex_CharacterRange range)
 {
     if (set->ranges_len % REALLOC_PERIOD == 0) {
         set->ranges = realloc(set->ranges, sizeof(*set->ranges) * (set->ranges_len+512));
     }
 
+    co->ranges_len += 1;
     set->ranges[set->ranges_len++] = range;
 }
 
@@ -61,7 +73,7 @@ static Redex_SubGroup In_CompileGroup(In_Compiler *co)
 {
     Redex_Group out = {0};
     while (In_IsCompiling(co) && *co->source != ')') {
-        In_AddSubgroup(&out, In_CompileBasic(co));
+        In_AddSubgroup(co, &out, In_CompileBasic(co));
     }
     
     // NOTE(skejeton): Skip `)` sentinel
@@ -95,7 +107,7 @@ static Redex_SubGroup In_CompileCharset(In_Compiler *co)
             continue;
         }
 
-        In_AddRange(&out, range);
+        In_AddRange(co, &out, range);
     }
     
     // NOTE(skejeton): Skip `]` sentinel
@@ -149,33 +161,62 @@ static Redex_SubGroup In_CompileBasic(In_Compiler *co)
     return out;
 }
 
-Redex_CompiledExpression Redex_Compile(const char *redex)
-{
-    In_Compiler co = {redex};
-    Redex_Group out = {0};
-    
-    while (In_IsCompiling(&co)) {
-        In_AddSubgroup(&out, In_CompileBasic(&co));
-    }
+struct {
+    size_t offset;
+}
+typedef In_MemoryMeta;
 
-    return out;
+void* In_AllocateFreeAndCopy(uint8_t *mem, In_MemoryMeta *meta, void *src, size_t size)
+{
+    void *at = mem + meta->offset;
+    memcpy(at, src, size);
+    free(src);
+    meta->offset += size;
+    return at;
 }
 
-void Redex_CompiledExpressionDeinit(Redex_CompiledExpression *expr)
+void Redex_LocalizeMemoryRecursive(In_MemoryMeta *meta, uint8_t *mem, Redex_Group *group)
 {
-    for (int i = 0; i < expr->subgroups_len; ++i) {
-        Redex_SubGroup *sub = &expr->subgroups[i];
+    group->subgroups = In_AllocateFreeAndCopy(mem, meta, group->subgroups, group->subgroups_len * sizeof *group->subgroups);
+
+    for (size_t i = 0; i < group->subgroups_len; ++i) {
+        Redex_SubGroup *sub = &group->subgroups[i];
+
         switch (sub->type) {
             case Redex_SubGroup_Group:
-                Redex_CompiledExpressionDeinit(&sub->group);
+                Redex_LocalizeMemoryRecursive(meta, mem, &sub->group);
                 break;
             case Redex_SubGroup_Charset:
-                free(sub->charset.ranges);
-                break;
+                sub->charset.ranges = In_AllocateFreeAndCopy(mem, meta, sub->charset.ranges, sub->charset.ranges_len * sizeof *sub->charset.ranges);
             default:
                 break;
         }
     }
-    free(expr->subgroups);
+}
+
+// Rearranges pointers so to localize them in RAM
+void Redex_LocalizeMemory(In_Compiler *co, Redex_CompiledExpression *expr)
+{
+    expr->memory = malloc(sizeof(Redex_CharacterRange) * co->ranges_len + sizeof(Redex_SubGroup) * co->subgroups_len);
+    Redex_LocalizeMemoryRecursive(&(In_MemoryMeta){0}, expr->memory, &expr->root);
+}
+
+Redex_CompiledExpression Redex_Compile(const char *redex)
+{
+    Redex_Group out = {0};
+    In_Compiler co = In_InitCompiler(redex);
+
+    while (In_IsCompiling(&co)) {
+        In_AddSubgroup(&co, &out, In_CompileBasic(&co));
+    }
+
+    Redex_CompiledExpression expr_out = (Redex_CompiledExpression){out};
+    Redex_LocalizeMemory(&co, &expr_out);
+
+    return expr_out;
+}
+
+void Redex_CompiledExpressionDeinit(Redex_CompiledExpression *expr) {
+    free(expr->memory);
 }
 
