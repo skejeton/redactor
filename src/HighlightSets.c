@@ -1,6 +1,7 @@
 #include "HighlightSets.h"
 #include "Colors.h"
 #include "Redex/Redex.h"
+#include <assert.h>
 
 #define R(x) Highlight_Rule_##x
 #define C(x) Redactor_Color_##x
@@ -42,6 +43,11 @@ const HighlightSets_Set HighlightSets_C = {C_rules, sizeof C_rules / sizeof 0[C_
 
 Highlight_Set HighlightSets_Compile(const HighlightSets_Set *set)
 {
+    // Assert that the set provided is identical to the constant set,
+    // to avoid allocation, this will be later changed because reallocating highlight sets will be required,
+    // and this file will probably be removed anyway as I add a spec file for highlight sets.
+    assert(set == &HighlightSets_C);
+
     Highlight_Set out_set = {0};
     out_set.rules = calloc(sizeof(Highlight_Rule), set->rules_len);
 
@@ -53,15 +59,7 @@ Highlight_Set HighlightSets_Compile(const HighlightSets_Set *set)
 
         switch (rule->rule_type) {
             case Highlight_Rule_AnyKw: {
-                int len = 0;
-                while (rule->rule_anykw[len]) {
-                    len++;
-                }
-
-                out_rule->rule_anykw.exprs = malloc(sizeof(Redex_CompiledExpression)*len);
-                for (int j = 0; j < len; ++j) {
-                    out_rule->rule_anykw.exprs[out_rule->rule_anykw.exprs_len++] = Redex_Compile(rule->rule_anykw[j]);
-                }
+                out_rule->rule_anykw.keywords = rule->rule_anykw;
             } break;
             case Highlight_Rule_Lookahead: {
                 out_rule->rule_lookahead.data = Redex_Compile(rule->rule_lookahead.data);

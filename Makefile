@@ -3,7 +3,7 @@ AR?=llvm-ar
 OUTPUT?=bin/redactor
 SYS_LIBS?=-lSDL2 -lSDL2_ttf -lm -lc
 
-SHARED_CFLAGS?=-O0 -g -fsanitize=address
+SHARED_CFLAGS?=-O0 -fsanitize=address
 
 SRC_CFLAGS=-I. -Isrc -MD
 SRC_LIBS=$(SYS_LIBS) 

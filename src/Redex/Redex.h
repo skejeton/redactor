@@ -77,8 +77,8 @@ void Redex_CompiledExpressionDeinit(Redex_CompiledExpression *expr);
 
 // MATCHER:
 struct {
-    bool success;
     BufferTape end;
+    bool success;
 }
 typedef Redex_Match;
 

@@ -1,4 +1,5 @@
 #include "BufferDraw.h"
+#include "BufferTape.h"
 #include "Utf8.h"
 #include "Redex/Redex.h"
 #include "Highlight.h"
@@ -58,14 +59,25 @@ static bool In_ProcessRedex(Redex_CompiledExpression *expr, BufferTape *tape)
     }
 }
 
-static bool In_ProcessAnyKw(Redex_CompiledExpression *exprs, size_t exprs_len, BufferTape *tape)
+static bool In_CheckTapeEqual(const char *against, BufferTape *tape)
+{
+    uint32_t c;
+    while ((c = Utf8_NextVeryBad(&against))) {
+        if (BufferTape_Next(tape) != c) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool In_ProcessAnyKw(const char **keywords, BufferTape *tape)
 {
     // TODO: Binary search
-    for (int i = 0; i < exprs_len; i++) {
+    for (int i = 0; keywords[i]; i++) {
         BufferTape copy = *tape;
 
         // NOTE: This is a quick hack, ideally when I have nested rules I can have keyword derive from identifier
-        if (In_ProcessRedex(&exprs[i], &copy) && !isalnum(BufferTape_Get(&copy)) && BufferTape_Get(&copy) != '_') {
+        if (In_CheckTapeEqual(keywords[i], &copy) && !isalnum(BufferTape_Get(&copy)) && BufferTape_Get(&copy) != '_') {
             *tape = copy;
             return true;
         }
@@ -97,7 +109,7 @@ void Highlight_HighlightBuffer(Buffer *buf, const Highlight_Set *set, BufferDraw
                     match = In_ProcessWrapped(&rule->rule_wrapped.begin, &rule->rule_wrapped.end, &rule->rule_wrapped.slash, &newTape);
                     break;
                 case Highlight_Rule_AnyKw:
-                    match = In_ProcessAnyKw(rule->rule_anykw.exprs, rule->rule_anykw.exprs_len, &newTape);
+                    match = In_ProcessAnyKw(rule->rule_anykw.keywords, &newTape);
                     break;
                 default: 
                     break;
@@ -120,18 +132,15 @@ void Highlight_HighlightBuffer(Buffer *buf, const Highlight_Set *set, BufferDraw
     BufferDraw_InsertSegment(out_segments, tape.cursor.line, tape.cursor.column, BufferTape_GetSubstringMemoryOffset(&tape), Redactor_Color_Fore);
 }
 
+// IMPROVEMENT(skejeton): This is a probably bad place to deinit a highlight set because they may be constructed from outside sources..
+// the outside sources might need to handle this themselves, but as for now this poses no problem, so it'll remain here.
 void Highlight_HighlightSetDeinit(Highlight_Set *set)
 {
     for (size_t i = 0; i < set->rules_len; ++i) {
         Highlight_Rule *rule = &set->rules[i];
         switch (rule->rule_type) {
             case Highlight_Rule_AnyKw:
-                for (int i = 0; i < rule->rule_anykw.exprs_len; ++i) {
-                    Redex_CompiledExpressionDeinit(&rule->rule_anykw.exprs[i]);
-                }
-                // FIXME(skejeton): This is not a good idea to assume that
-                // the array was allocated through malloc.
-                free(rule->rule_anykw.exprs);
+                // TODO(skejeton): This will need to be handled once we know that Highlight_Set has an allocated keyword list.
                 break;
             case Highlight_Rule_Lookahead:
                 Redex_CompiledExpressionDeinit(&rule->rule_lookahead.data);

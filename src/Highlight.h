@@ -18,7 +18,8 @@ struct {
     SDL_Color color;
     union {
         struct {
-            char **keywords;
+            // It's a null terminated array of keywords
+            const char **keywords;
         } rule_anykw;
         struct { 
             Redex_CompiledExpression begin, end, slash;

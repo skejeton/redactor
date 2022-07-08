@@ -8,8 +8,8 @@
 struct {
     Buffer *buffer;
     Cursor cursor;
-    uint32_t ch;
     char *line;
+    uint32_t ch;
 }
 typedef BufferTape;
 
@@ -37,9 +37,9 @@ static inline int BufferTape_Next(BufferTape *tape)
     }
 
     switch (oldch) {
-    case '\0': break;
-    case '\n': tape->cursor.line += 1; tape->cursor.column = 0; break;
-    default: tape->cursor.column += 1; break;
+        case '\0': break; // brocolli :)
+        case '\n': tape->cursor.line += 1; tape->cursor.column = 0; break;
+        default: tape->cursor.column += 1; break;
     }
     BufferTape_CacheChar(tape);
     return oldch;

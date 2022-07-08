@@ -429,7 +429,7 @@ void Redactor_HandleEvents(Redactor *rs)
             if (rs->input.ks_shift) {
                 Redactor_ScrollScreen(rs, event.wheel.y * 10, 0);
             } else {
-                Redactor_ScrollScreen(rs, event.wheel.x * 10, event.wheel.y * rs->render_font_height);
+                Redactor_ScrollScreen(rs, -event.wheel.x * 10, event.wheel.y * rs->render_font_height);
             }
             break;
         case SDL_TEXTINPUT:
