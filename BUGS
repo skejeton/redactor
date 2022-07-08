@@ -1,2 +1,0 @@
-Regex matching is slow, as shown by callgrind, most of the time is spent on Utf8_Next,
-    sourced from redex parser

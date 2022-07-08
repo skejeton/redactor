@@ -1,1 +1,11 @@
-* Speed up redex matcher
+# HIGHLIGHTING-REGEX
+0003 Reduce inefficent calls to Utf8_Next [0002] [0004]
+0004 Compile regular expressions for better performance.  
+
+# EDITING 
+
+# ARCHIVE
+0002 Implement `BufferTape` to handle iterating the buffer. 
+0001 Probably switch to `\` for regex escaping instead of `%` to avoid confusion when passing regex to format functions.
+0000 Add matching any character in regex (dot).
+0005 Implement scrolling horizontally.
