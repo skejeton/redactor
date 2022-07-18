@@ -1,5 +1,7 @@
 // Put includes here
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_pixels.h>
+#include <SDL2/SDL_render.h>
 #include <SDL2/SDL_scancode.h>
 #include <SDL2/SDL_ttf.h>
 #include <string.h>
@@ -17,14 +19,12 @@
 
 // -- util
 
-char *Redactor_GetTempResPath(Redactor *rs, const char *resname)
-{
-    free(rs->temp_respath);
-    return (rs->temp_respath = Util_ConcatPaths(rs->program_dataPath, resname));
+char *Redactor_GetTempResPath(Redactor *rs, const char *resname) {
+  free(rs->temp_respath);
+  return (rs->temp_respath = Util_ConcatPaths(rs->program_dataPath, resname));
 }
 
-void Redactor_PrintMeta(Redactor *rs)
-{
+void Redactor_PrintMeta(Redactor *rs) {
     printf("|-- redactor meta -------------\n");
     printf("|   cfg_program_dataDir  | %s\n", rs->cfg_program_dataDir);
     printf("|   cfg_font_respath     | %s\n", rs->cfg_font_respath);
@@ -205,15 +205,15 @@ void Redactor_End(Redactor *rs)
     SDL_Quit();
 }
 
-// -- draw
-
-SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int initx, int x, int y, int col)
+SDL_Point Redactor_DrawTextEx(Redactor *rs, SDL_Color background, SDL_Color foreground, const char *text, int initx, int x, int y, int col)
 {
     int c;
     if (y < -rs->render_font_height || y > rs->render_window_size.y) {
         return (SDL_Point){x, y};
     }
     
+    SDL_SetRenderDrawColor(rs->render_sdl_renderer, background.r, background.g, background.b, background.a);
+
     while ((c = Utf8_NextVeryBad(&text))) {
         // NOTE: Prevent out of bounds
         if (c < 0 || c >= Redactor_GlyphmapGlyphMax) {
@@ -235,15 +235,24 @@ SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int
         }
 
         GlyphChunk *chunk = rs->render_font_chunks[c / 256];
-        SDL_SetTextureColorMod(chunk->atlas, color.r, color.g, color.b);
+        SDL_SetTextureColorMod(chunk->atlas, foreground.r, foreground.g, foreground.b);
 
         SDL_Rect src = chunk->glyphs[c%256];
+        SDL_RenderFillRect(rs->render_sdl_renderer, &(SDL_Rect){x, y, src.w, src.h});
         SDL_RenderCopy(rs->render_sdl_renderer, chunk->atlas, &src, &(SDL_Rect){x, y, src.w, src.h});
         x += src.w;
         col++;
     }
 
     return (SDL_Point){x, y};
+
+}
+
+SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int initx, int x, int y, int col)
+{
+    const SDL_Color Color_Transparent = {0, 0, 0, 0};
+
+    return Redactor_DrawTextEx(rs, Color_Transparent, color, text, initx, x, y, col);
 }
 
 SDL_Rect Redactor_GetCursorRect(Redactor *rs)
@@ -411,7 +420,8 @@ void Redactor_Draw(Redactor *rs)
     SDL_RenderPresent(rs->render_sdl_renderer);
 }
 
-void In_InvalidateBuffer(Redactor *rs) {
+void In_InvalidateBuffer(Redactor *rs)
+{
     Highlight_HighlightBuffer(&rs->file_buffer, &rs->file_highlightset_c, &rs->render_drawSegments);
 }
 
@@ -421,103 +431,103 @@ void Redactor_HandleEvents(Redactor *rs)
 
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
-        case SDL_QUIT:
-            rs->program_running = false;
-            break;
-        case SDL_MOUSEWHEEL:
-            rs->toy_textureViewer_scale += event.wheel.y/10.0;
-            if (rs->input.ks_shift) {
-                Redactor_ScrollScreen(rs, event.wheel.y * 10, 0);
-            } else {
-                Redactor_ScrollScreen(rs, -event.wheel.x * 10, event.wheel.y * rs->render_font_height);
-            }
-            break;
-        case SDL_TEXTINPUT:
-            rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, event.text.text);
-            Redactor_MoveCursorToVisibleArea(rs);
-            In_InvalidateBuffer(rs);
-            break;
-        case SDL_MOUSEBUTTONDOWN:
-            if (event.button.button == SDL_BUTTON_LEFT) {
-                Redactor_SetCursorAtScreenPos(rs, event.button.x, event.button.y);
-                Redactor_MoveCursorToVisibleArea(rs);
-            } 
-            break;
-        case SDL_KEYUP: {
-            switch (event.key.keysym.scancode) {
-                // -- control keys
-                case SDL_SCANCODE_LCTRL:
-                case SDL_SCANCODE_RCTRL:
-                    rs->input.ks_ctrl = false;
-                    break;
-                case SDL_SCANCODE_LSHIFT:
-                case SDL_SCANCODE_RSHIFT:
-                    rs->input.ks_shift = false;
-                    break;
-                default:;
-            }
-        } break;
-        case SDL_KEYDOWN:
-            switch (event.key.keysym.scancode) {
-            // -- control keys
-            case SDL_SCANCODE_LCTRL:
-            case SDL_SCANCODE_RCTRL:
-                rs->input.ks_ctrl = true;
+            case SDL_QUIT:
+                rs->program_running = false;
                 break;
-            case SDL_SCANCODE_LSHIFT:
-            case SDL_SCANCODE_RSHIFT:
-                rs->input.ks_shift = true;
-                break;
-            // -- control keystrokes
-            case SDL_SCANCODE_V: 
-                {
-                    if (rs->input.ks_ctrl) {
-                        char *clipboardText = SDL_GetClipboardText();
-                        rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, clipboardText);
-                        free(clipboardText);
-                        In_InvalidateBuffer(rs);
-                    }
+            case SDL_MOUSEWHEEL:
+                rs->toy_textureViewer_scale += event.wheel.y/10.0;
+                if (rs->input.ks_shift) {
+                    Redactor_ScrollScreen(rs, event.wheel.y * 10, 0);
+                } else {
+                    Redactor_ScrollScreen(rs, -event.wheel.x * 10, event.wheel.y * rs->render_font_height);
                 }
                 break;
-            // -- miscel
-            case SDL_SCANCODE_TAB:
-                rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\t");
+            case SDL_TEXTINPUT:
+                rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, event.text.text);
                 Redactor_MoveCursorToVisibleArea(rs);
                 In_InvalidateBuffer(rs);
                 break;
-            case SDL_SCANCODE_RETURN:
-                rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\n");
-                Redactor_MoveCursorToVisibleArea(rs);
-                In_InvalidateBuffer(rs);
+            case SDL_MOUSEBUTTONDOWN:
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    Redactor_SetCursorAtScreenPos(rs, event.button.x, event.button.y);
+                    Redactor_MoveCursorToVisibleArea(rs);
+                } 
                 break;
-            case SDL_SCANCODE_BACKSPACE:
-                rs->file_cursor = Buffer_RemoveCharacterUnder(&rs->file_buffer, rs->file_cursor);
-                // try to push back cursor as far up right as we can
-                rs->render_scroll.x = 0;
-                Redactor_MoveCursorToVisibleArea(rs);
-                In_InvalidateBuffer(rs);
-                rs->render_scroll_intermediate.x = rs->render_scroll.x;
-                break;
-            case SDL_SCANCODE_UP:
-                rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, -1, 0);
-                Redactor_MoveCursorToVisibleArea(rs);
-                break;
-            case SDL_SCANCODE_DOWN:
-                rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 1, 0);
-                Redactor_MoveCursorToVisibleArea(rs);
-                break;
-            case SDL_SCANCODE_LEFT:
-                rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 0, -1);
-                Redactor_MoveCursorToVisibleArea(rs);
-                break;
-            case SDL_SCANCODE_RIGHT:
-                rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 0, 1);
-                Redactor_MoveCursorToVisibleArea(rs);
+            case SDL_KEYUP: {
+                switch (event.key.keysym.scancode) {
+                    // -- control keys
+                    case SDL_SCANCODE_LCTRL:
+                    case SDL_SCANCODE_RCTRL:
+                        rs->input.ks_ctrl = false;
+                        break;
+                    case SDL_SCANCODE_LSHIFT:
+                    case SDL_SCANCODE_RSHIFT:
+                        rs->input.ks_shift = false;
+                        break;
+                    default:;
+                }
+            } break;
+            case SDL_KEYDOWN:
+                switch (event.key.keysym.scancode) {
+                    // -- control keys
+                    case SDL_SCANCODE_LCTRL:
+                    case SDL_SCANCODE_RCTRL:
+                        rs->input.ks_ctrl = true;
+                        break;
+                    case SDL_SCANCODE_LSHIFT:
+                    case SDL_SCANCODE_RSHIFT:
+                        rs->input.ks_shift = true;
+                        break;
+                    // -- control keystrokes
+                    case SDL_SCANCODE_V: 
+                        {
+                            if (rs->input.ks_ctrl) {
+                                char *clipboardText = SDL_GetClipboardText();
+                                rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, clipboardText);
+                                free(clipboardText);
+                                In_InvalidateBuffer(rs);
+                            }
+                        }
+                        break;
+                    // -- miscel
+                    case SDL_SCANCODE_TAB:
+                        rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\t");
+                        Redactor_MoveCursorToVisibleArea(rs);
+                        In_InvalidateBuffer(rs);
+                        break;
+                    case SDL_SCANCODE_RETURN:
+                        rs->file_cursor = Buffer_InsertUTF8(&rs->file_buffer, rs->file_cursor, "\n");
+                        Redactor_MoveCursorToVisibleArea(rs);
+                        In_InvalidateBuffer(rs);
+                        break;
+                    case SDL_SCANCODE_BACKSPACE:
+                        rs->file_cursor = Buffer_RemoveCharacterUnder(&rs->file_buffer, rs->file_cursor);
+                        // try to push back cursor as far up right as we can
+                        rs->render_scroll.x = 0;
+                        Redactor_MoveCursorToVisibleArea(rs);
+                        In_InvalidateBuffer(rs);
+                        rs->render_scroll_intermediate.x = rs->render_scroll.x;
+                        break;
+                    case SDL_SCANCODE_UP:
+                        rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, -1, 0);
+                        Redactor_MoveCursorToVisibleArea(rs);
+                        break;
+                    case SDL_SCANCODE_DOWN:
+                        rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 1, 0);
+                        Redactor_MoveCursorToVisibleArea(rs);
+                        break;
+                    case SDL_SCANCODE_LEFT:
+                        rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 0, -1);
+                        Redactor_MoveCursorToVisibleArea(rs);
+                        break;
+                    case SDL_SCANCODE_RIGHT:
+                        rs->file_cursor = Buffer_MoveCursor(&rs->file_buffer, rs->file_cursor, 0, 1);
+                        Redactor_MoveCursorToVisibleArea(rs);
+                        break;
+                    default:;
+                }
                 break;
             default:;
-            }
-            break;
-        default:;
         }
     }
 }

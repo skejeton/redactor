@@ -94,6 +94,7 @@ typedef Redactor;
 void Background_Draw(Redactor *rs, Background *bg);
 
 // -- Redactor
+SDL_Point Redactor_DrawTextEx(Redactor *rs, SDL_Color background, SDL_Color foreground, const char *text, int initx, int x, int y, int col);
 SDL_Point Redactor_DrawText(Redactor *rs, SDL_Color color, const char *text, int initx, int x, int y, int col);
 int Redactor_Main(int argc, char *argv[]);
 

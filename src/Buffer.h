@@ -2,6 +2,7 @@
 #define R_BUFFER_H
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 struct {
     // NOTE: text is a utf8 string
@@ -43,6 +44,20 @@ static inline int Buffer_CompareCursor(Cursor a, Cursor b) {
     } else {
         return (a.line < b.line) * -1 + (a.line > b.line) * 1;
     }
+}
+
+static inline bool Buffer_CursorInRange(Cursor cur, Range range) {
+    if (cur.line == range.from.line && range.from.line == range.to.line) {
+        return cur.column >= range.from.column && cur.column < range.to.column;
+    } else if (cur.line == range.from.line) {
+        return cur.column >= range.from.column;
+    } else if (cur.line == range.to.line) {
+        return cur.column < range.to.column;
+    } else if (cur.line > range.from.line && cur.line < range.to.line) {
+        return true;
+    } 
+
+    return false;
 }
 
 char *Buffer_GetStringRange(Buffer *buf, Range range);
